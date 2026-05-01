@@ -24,7 +24,7 @@
     .main{flex:1;display:flex;flex-direction:column;height:100%;position:relative}
     .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border);z-index:10}
     .topbar h2{font-size:18px;font-weight:600;color:var(--accent)}
-    .topbar .gear-btn{background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;opacity:0.7;transition:all .2s}
+    .topbar .gear-btn{background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;opacity:0.7}
     .topbar .gear-btn:hover{opacity:1}
     .chat-area{flex:1;overflow-y:auto;padding:16px}
     .msg-row{margin-bottom:12px;display:flex;flex-direction:column;align-items:flex-start}
@@ -93,6 +93,7 @@
     <div class="welcome-btns"><button class="btn-login" onclick="showLoginModal()">登录</button><button class="btn-register" onclick="showRegisterModal()">注册</button></div>
   </div>
 </div>
+
 <div id="loginModal" class="modal-overlay" style="display:none">
   <div class="modal-box"><h3>🔑 登录</h3>
     <input type="text" id="loginUser" placeholder="用户名" autocomplete="off">
@@ -100,6 +101,7 @@
     <div class="btn-group"><button class="btn-secondary" onclick="document.getElementById('loginModal').style.display='none';document.getElementById('welcomeModal').style.display='flex'">返回</button><button class="btn-primary" onclick="doLogin()">登录</button></div>
   </div>
 </div>
+
 <div id="registerModal" class="modal-overlay" style="display:none">
   <div class="modal-box"><h3>📝 注册</h3>
     <input type="text" id="regUser" placeholder="用户名（禁止 __ / \）" autocomplete="off">
@@ -107,12 +109,14 @@
     <div class="btn-group"><button class="btn-secondary" onclick="document.getElementById('registerModal').style.display='none';document.getElementById('welcomeModal').style.display='flex'">返回</button><button class="btn-primary" onclick="doRegister()">注册</button></div>
   </div>
 </div>
+
 <div id="adminModal" class="modal-overlay" style="display:none">
   <div class="modal-box"><h3>🔐 管理员验证</h3>
     <input type="password" id="adminPass" placeholder="管理员密码" autocomplete="off">
     <div class="btn-group"><button class="btn-secondary" onclick="document.getElementById('adminModal').style.display='none'">取消</button><button class="btn-warning" onclick="verifyAdmin()">验证</button></div>
   </div>
 </div>
+
 <div id="logModal" class="log-modal" style="display:none">
   <div class="log-box"><h3>📋 运行日志</h3><div id="logContent">暂无日志</div><br><button class="sidebar-btn" onclick="clearLog()">清空日志</button><button class="sidebar-btn" style="margin-top:4px" onclick="document.getElementById('logModal').style.display='none'">关闭</button></div>
 </div>
@@ -122,10 +126,10 @@ var ENC_TOKEN='59a643c206c92361b1fbd493f07065e64fff6a57cd90779631dae58a49c8457f0
 var ADMIN_HASH='0cd875127059c80ae5744c59a4e1183a123f4f9dea543f9391bcff9317f0b4f6';
 var REPO_USER='small534460';var REPO_NAME='LTS';var MSG_DIR='messages';var USER_DIR='users';
 var token='';var currentUser='';var pollingTimer=null;var logs=[];var theme='dark';var attachFile=null;
-var loadedFolders={};var isFirstLoad=true;
+var loadedFolders={};
 
 function addLog(m){var t=new Date().toLocaleTimeString();logs.push('['+t+'] '+m);console.log(m);if(logs.length>200)logs.shift()}
-function showToast(m){var t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},2000)}
+function showToast(m){var d=document.createElement('div');d.className='toast';d.textContent=m;document.body.appendChild(d);setTimeout(function(){d.remove()},2000)}
 
 function decryptToken(pw){return crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw)).then(function(h){var hb=new Uint8Array(h),eb=[];for(var i=0;i<ENC_TOKEN.length;i+=2)eb.push(parseInt(ENC_TOKEN.substr(i,2),16));var db=[];for(var i=0;i<eb.length;i++)db.push(eb[i]^hb[i%hb.length]);return new TextDecoder().decode(new Uint8Array(db))})}
 async function initToken(){try{token=await decryptToken('534460');addLog('令牌已就绪')}catch(e){addLog('令牌解密失败: '+e.message)}}
@@ -136,7 +140,7 @@ async function api(endpoint,method,data){
   var url='https://api.github.com/repos/'+REPO_USER+'/'+REPO_NAME+'/'+endpoint;
   var opts={method:method,headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}};
   if(data)opts.body=JSON.stringify(data);
-  try{var r=await fetch(url,opts);if(r.status===204)return null;if(r.status===404)return null;if(!r.ok){throw new Error('HTTP '+r.status)}return await r.json()}catch(e){addLog('API: '+e.message);return null}
+  try{var r=await fetch(url,opts);if(r.status===204)return null;if(r.status===404)return null;if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}catch(e){addLog('API: '+e.message);return null}
 }
 
 function showLog(){document.getElementById('logModal').style.display='flex';renderLog()}
@@ -155,112 +159,76 @@ function showRegisterModal(){document.getElementById('welcomeModal').style.displ
 async function doLogin(){
   var u=document.getElementById('loginUser').value.trim();var p=document.getElementById('loginPass').value;
   if(!u||!p){showToast('请填写完整');return}
-  if(u.indexOf('/')>=0||u.indexOf('\\')>=0||u.indexOf('__')>=0){showToast('用户名含非法字符');return}
-  addLog('尝试登录: '+u);
   var info=await api('contents/'+USER_DIR+'/'+u+'.txt');
   if(!info||!info.content){showToast('用户不存在');return}
   var txt=atob(info.content.replace(/\s/g,''));var lines=txt.split('\n');
   if(lines[0]!==p){showToast('密码错误');return}
   if(lines[1].trim()!=='1'){showToast('账户待审核');return}
   currentUser=u;localStorage.setItem('chat_user',u);
-  document.getElementById('loginModal').style.display='none';document.getElementById('mainApp').style.display='flex';
-  loadedFolders={};isFirstLoad=true;document.getElementById('chatArea').innerHTML='';
-  addLog('登录成功: '+u);loadMessages();pollingTimer=setInterval(loadMessages,3000)
+  document.getElementById('loginModal').style.display='none';
+  document.getElementById('mainApp').style.display='flex';
+  loadedFolders={};document.getElementById('chatArea').innerHTML='';
+  addLog('登录成功: '+u);loadMessages();pollingTimer=setInterval(loadMessages,2000)
 }
 
 async function doRegister(){
   var u=document.getElementById('regUser').value.trim();var p=document.getElementById('regPass').value;
   if(!u||!p){showToast('请填写完整');return}
-  if(u.indexOf('/')>=0||u.indexOf('\\')>=0||u.indexOf('__')>=0){showToast('用户名含非法字符');return}
   if(!token){try{await initToken()}catch(e){}if(!token){showToast('系统错误');return}}
-  addLog('尝试注册: '+u);
   var check=await api('contents/'+USER_DIR+'/'+u+'.txt');
   if(check){showToast('用户名已存在');return}
   var cont=p+'\n0';var b64=btoa(unescape(encodeURIComponent(cont)));
   var r=await api('contents/'+USER_DIR+'/'+u+'.txt','PUT',{message:'注册 '+u,content:b64,branch:'main'});
-  if(r){showToast('注册成功！等待审核');addLog('注册成功: '+u);document.getElementById('registerModal').style.display='none';document.getElementById('welcomeModal').style.display='flex'}else{showToast('注册失败')}
+  if(r){showToast('注册成功！等待审核');document.getElementById('registerModal').style.display='none';document.getElementById('welcomeModal').style.display='flex'}else{showToast('注册失败')}
 }
 
-function logout(){if(pollingTimer)clearInterval(pollingTimer);currentUser='';localStorage.removeItem('chat_user');loadedFolders={};isFirstLoad=true;document.getElementById('mainApp').style.display='none';document.getElementById('welcomeModal').style.display='flex';addLog('已退出')}
+function logout(){if(pollingTimer)clearInterval(pollingTimer);currentUser='';localStorage.removeItem('chat_user');loadedFolders={};document.getElementById('mainApp').style.display='none';document.getElementById('welcomeModal').style.display='flex'}
 
 function showAdminModal(){document.getElementById('adminModal').style.display='flex';document.getElementById('adminPass').value=''}
 async function verifyAdmin(){
   var pw=document.getElementById('adminPass').value;if(!pw)return;
   var hh=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw)).then(function(h){return Array.from(new Uint8Array(h)).map(function(b){return b.toString(16).padStart(2,'0')}).join('')});
-  if(hh===ADMIN_HASH){document.getElementById('adminModal').style.display='none';
-    if(confirm('管理员模式已激活。\n\n要删除所有聊天记录吗？')){if(confirm('再次确认'))deleteAllMessages()}
-  }else{showToast('密码错误')}
+  if(hh===ADMIN_HASH){document.getElementById('adminModal').style.display='none';if(confirm('要删除所有聊天记录吗？')){if(confirm('再次确认'))deleteAllMessages()}}else{showToast('密码错误')}
 }
-async function deleteAllMessages(){var list=await api('contents/'+MSG_DIR);if(!list||!Array.isArray(list))return;var count=0;for(var i=0;i<list.length;i++){if(list[i].name==='.gitkeep')continue;if(list[i].type==='dir'){try{var sub=await api('contents/'+MSG_DIR+'/'+list[i].name);if(sub&&Array.isArray(sub)){for(var j=0;j<sub.length;j++){if(sub[j].name==='.gitkeep')continue;await api('contents/'+MSG_DIR+'/'+list[i].name+'/'+sub[j].name,'DELETE',{message:'删除',sha:sub[j].sha,branch:'main'});count++}}var self=await api('contents/'+MSG_DIR+'/'+list[i].name+'/.gitkeep');if(self)await api('contents/'+MSG_DIR+'/'+list[i].name+'/.gitkeep','DELETE',{message:'删除文件夹',sha:self.sha,branch:'main'}).catch(function(){})}catch(e){}}}loadedFolders={};isFirstLoad=true;document.getElementById('chatArea').innerHTML='';addLog('聊天记录已清空')}
+async function deleteAllMessages(){var list=await api('contents/'+MSG_DIR);if(!list||!Array.isArray(list))return;for(var i=0;i<list.length;i++){if(list[i].name==='.gitkeep')continue;if(list[i].type==='dir'){try{var sub=await api('contents/'+MSG_DIR+'/'+list[i].name);if(sub&&Array.isArray(sub)){for(var j=0;j<sub.length;j++){if(sub[j].name==='.gitkeep')continue;await api('contents/'+MSG_DIR+'/'+list[i].name+'/'+sub[j].name,'DELETE',{message:'删除',sha:sub[j].sha,branch:'main'})}}var s=await api('contents/'+MSG_DIR+'/'+list[i].name+'/.gitkeep');if(s)await api('contents/'+MSG_DIR+'/'+list[i].name+'/.gitkeep','DELETE',{message:'删除',sha:s.sha,branch:'main'}).catch(function(){})}catch(e){}}}loadedFolders={};document.getElementById('chatArea').innerHTML='';addLog('聊天记录已清空')}
 
-// ★★★ 发送消息 ★★★
+// ★ 发送消息
 async function sendMessage(){
   var msg=document.getElementById('msgInput').value.trim();
-  if(!msg&&!attachFile){showToast('请输入内容');return}
-  if(msg&&(msg.indexOf('__')>=0||msg.indexOf('/')>=0||msg.indexOf('\\')>=0)){showToast('消息含非法字符');return}
+  if(!msg&&!attachFile){return}
   var now=new Date();var ts=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+'-'+String(now.getMinutes()).padStart(2,'0')+'-'+String(now.getSeconds()).padStart(2,'0');
-  var safeMsg=msg||'(附件)';var folderName=ts+'__'+currentUser+'__'+safeMsg;
-  
-  // 创建文件夹
-  var r=await api('contents/'+MSG_DIR+'/'+folderName+'/.gitkeep','PUT',{message:'消息',content:btoa('#'),branch:'main'});
-  if(!r){showToast('发送失败');return}
-  
-  // 上传附件
-  if(attachFile){
-    if(attachFile.size>25*1024*1024){showToast('附件<25MB')}
-    else{await uploadAttach(MSG_DIR+'/'+folderName)}
-  }
-  
-  document.getElementById('msgInput').value='';attachFile=null;
-  // ★ 立即刷新消息
-  loadMessages();
+  var safeMsg=msg||'(附件)';var fn=ts+'__'+currentUser+'__'+safeMsg;
+  var r=await api('contents/'+MSG_DIR+'/'+fn+'/.gitkeep','PUT',{message:'消息',content:btoa('#'),branch:'main'});
+  if(r){if(attachFile&&attachFile.size<=25*1024*1024){await uploadAttach(MSG_DIR+'/'+fn)}document.getElementById('msgInput').value='';attachFile=null;loadedFolders[fn]=true;await addMessageToChat(fn,ts,currentUser,safeMsg)}
 }
-
 async function uploadAttach(fp){var f=attachFile;return new Promise(function(resolve){var r=new FileReader();r.onload=async function(e){var c=btoa(new Uint8Array(e.target.result).reduce(function(d,b){return d+String.fromCharCode(b)},''));await api('contents/'+fp+'/'+f.name,'PUT',{message:'附件',content:c,branch:'main'});resolve()};r.readAsArrayBuffer(f)})}
 document.getElementById('attachInput').addEventListener('change',function(e){if(e.target.files.length>0){attachFile=e.target.files[0];showToast('已选: '+attachFile.name)}});
 
-// ★★★ 加载消息（增量，不移除已有消息）★★★
+// ★ 添加单条消息到聊天区
+async function addMessageToChat(fn,ts,user,text){
+  var area=document.getElementById('chatArea');
+  var row=document.createElement('div');row.className='msg-row';if(user===currentUser)row.classList.add('mine');
+  var meta=document.createElement('div');meta.className='msg-meta';meta.innerHTML='<span class="user-tag">'+user+'</span> <span>'+ts+'</span>';
+  var bb=document.createElement('div');bb.className='msg-bubble';bb.textContent=text;
+  row.appendChild(meta);row.appendChild(bb);area.appendChild(row);
+  // 加载附件
+  var sub=await api('contents/'+MSG_DIR+'/'+fn);
+  if(sub&&Array.isArray(sub)){for(var j=0;j<sub.length;j++){if(sub[j].name==='.gitkeep')continue;var ad=document.createElement('div');ad.className='msg-attachment';var ext=sub[j].name.split('.').pop().toLowerCase();if(['jpg','jpeg','png','gif','bmp','webp','svg'].indexOf(ext)>=0){var img=document.createElement('img');img.src=sub[j].download_url;img.onclick=function(){window.open(this.src)};ad.appendChild(img)}else{var a=document.createElement('a');a.href=sub[j].download_url;a.textContent='📎 '+sub[j].name;a.download=sub[j].name;a.target='_blank';ad.appendChild(a)}bb.appendChild(ad)}}
+  area.scrollTop=area.scrollHeight;
+}
+
+// ★ 增量加载消息（轮询用）
 async function loadMessages(){
   if(!currentUser)return;
   var list=await api('contents/'+MSG_DIR);if(!list||!Array.isArray(list))return;
   var area=document.getElementById('chatArea');
-  
   for(var i=0;i<list.length;i++){
     if(list[i].name==='.gitkeep'||list[i].type!=='dir')continue;
     if(loadedFolders[list[i].name])continue;
     var parts=list[i].name.split('__',3);if(parts.length<3)continue;
     loadedFolders[list[i].name]=true;
-    
-    var row=document.createElement('div');row.className='msg-row';
-    if(parts[1]===currentUser)row.classList.add('mine');
-    var meta=document.createElement('div');meta.className='msg-meta';
-    meta.innerHTML='<span class="user-tag">'+parts[1]+'</span> <span>'+parts[0]+'</span>';
-    var bb=document.createElement('div');bb.className='msg-bubble';bb.textContent=parts[2];
-    row.appendChild(meta);row.appendChild(bb);area.appendChild(row);
-    
-    // 加载附件
-    var folderName=list[i].name;
-    api('contents/'+MSG_DIR+'/'+folderName).then(function(sub){
-      if(sub&&Array.isArray(sub)){
-        for(var j=0;j<sub.length;j++){
-          if(sub[j].name==='.gitkeep')continue;
-          var ad=document.createElement('div');ad.className='msg-attachment';
-          var ext=sub[j].name.split('.').pop().toLowerCase();
-          if(['jpg','jpeg','png','gif','bmp','webp','svg'].indexOf(ext)>=0){
-            var img=document.createElement('img');img.src=sub[j].download_url;img.alt=sub[j].name;
-            img.onclick=function(){window.open(this.src)};ad.appendChild(img);
-          }else{
-            var a=document.createElement('a');a.href=sub[j].download_url;
-            a.textContent='📎 '+sub[j].name;a.download=sub[j].name;a.target='_blank';ad.appendChild(a);
-          }
-          bb.appendChild(ad);
-        }
-      }
-    }).catch(function(){});
+    await addMessageToChat(list[i].name,parts[0],parts[1],parts[2]);
   }
-  
-  // 有新消息时滚动到底部
-  area.scrollTop=area.scrollHeight;
 }
 
 document.addEventListener('DOMContentLoaded',async function(){
@@ -269,7 +237,7 @@ document.addEventListener('DOMContentLoaded',async function(){
   var su=localStorage.getItem('chat_user');
   if(su){document.getElementById('welcomeModal').style.display='none';
     try{var check=await api('contents/'+USER_DIR+'/'+su+'.txt');
-      if(check&&check.content){var txt=atob(check.content.replace(/\s/g,''));if(txt.split('\n')[1].trim()==='1'){currentUser=su;document.getElementById('mainApp').style.display='flex';loadedFolders={};isFirstLoad=true;loadMessages();pollingTimer=setInterval(loadMessages,3000);addLog('自动登录: '+su)}else{localStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex'}}
+      if(check&&check.content){var txt=atob(check.content.replace(/\s/g,''));if(txt.split('\n')[1].trim()==='1'){currentUser=su;document.getElementById('mainApp').style.display='flex';loadedFolders={};loadMessages();pollingTimer=setInterval(loadMessages,2000);addLog('自动登录: '+su)}else{localStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex'}}
       else{localStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex'}
     }catch(e){document.getElementById('welcomeModal').style.display='flex'}
   }else{document.getElementById('welcomeModal').style.display='flex'}
