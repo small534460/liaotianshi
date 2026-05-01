@@ -98,14 +98,12 @@
   </div>
 </div>
 
-<!-- 欢迎弹窗 -->
 <div id="welcomeModal" class="modal-overlay">
   <div class="modal-box"><h3>欢迎来到 Small 3 的聊天室</h3><div style="text-align:center;color:var(--text);opacity:0.7;margin-bottom:10px">选择一个操作</div>
     <div class="welcome-btns"><button class="btn-login" onclick="showLoginModal()">登录</button><button class="btn-register" onclick="showRegisterModal()">注册</button></div>
   </div>
 </div>
 
-<!-- 登录弹窗 -->
 <div id="loginModal" class="modal-overlay" style="display:none">
   <div class="modal-box"><h3>🔑 登录</h3>
     <input type="text" id="loginUser" placeholder="用户名" autocomplete="off">
@@ -114,7 +112,6 @@
   </div>
 </div>
 
-<!-- 注册弹窗 -->
 <div id="registerModal" class="modal-overlay" style="display:none">
   <div class="modal-box"><h3>📝 注册</h3>
     <input type="text" id="regUser" placeholder="用户名（禁止 __ / \）" autocomplete="off">
@@ -123,7 +120,6 @@
   </div>
 </div>
 
-<!-- 管理员弹窗 -->
 <div id="adminModal" class="modal-overlay" style="display:none">
   <div class="modal-box"><h3>🔐 管理员验证</h3>
     <input type="password" id="adminPass" placeholder="管理员密码" autocomplete="off">
@@ -131,7 +127,6 @@
   </div>
 </div>
 
-<!-- 日志弹窗 -->
 <div id="logModal" class="log-modal" style="display:none">
   <div class="log-box"><h3>📋 运行日志</h3><div id="logContent">暂无日志</div><br><button class="sidebar-btn" onclick="clearLog()">清空日志</button><button class="sidebar-btn" style="margin-top:4px" onclick="document.getElementById('logModal').style.display='none'">关闭</button></div>
 </div>
@@ -141,6 +136,7 @@ var ENC_TOKEN='59a643c206c92361b1fbd493f07065e64fff6a57cd90779631dae58a49c8457f0
 var ADMIN_HASH='0cd875127059c80ae5744c59a4e1183a123f4f9dea543f9391bcff9317f0b4f6';
 var REPO_USER='small534460';var REPO_NAME='LTS';var MSG_DIR='messages';var USER_DIR='users';
 var token='';var currentUser='';var pollingTimer=null;var logs=[];var theme='dark';var attachFile=null;
+var loadedFolders={}; // ★ 记录已加载的消息文件夹名，避免重复
 
 function addLog(m){var t=new Date().toLocaleTimeString();logs.push('['+t+'] '+m);console.log(m);if(logs.length>200)logs.shift()}
 function showToast(m){var t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},2000)}
@@ -162,7 +158,6 @@ function toggleTheme(){if(theme==='dark'){document.body.classList.add('light');t
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebarOverlay').classList.add('show')}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('show')}
 
-// ═══════ 注册/登录 ═══════
 function showLoginModal(){document.getElementById('welcomeModal').style.display='none';document.getElementById('loginModal').style.display='flex';document.getElementById('loginUser').value='';document.getElementById('loginPass').value=''}
 function showRegisterModal(){document.getElementById('welcomeModal').style.display='none';document.getElementById('registerModal').style.display='flex';document.getElementById('regUser').value='';document.getElementById('regPass').value=''}
 
@@ -177,7 +172,8 @@ async function doLogin(){
   var lines=txt.split('\n');if(lines[0]!==p){showToast('密码错误');addLog('登录失败: 密码错误');return}
   if(lines[1].trim()!=='1'){showToast('账户待审核，联系管理员');addLog('登录失败: 待审核');return}
   currentUser=u;localStorage.setItem('chat_user',u);document.getElementById('loginModal').style.display='none';
-  document.getElementById('mainApp').style.display='flex';addLog('登录成功: '+u);loadMessages();pollingTimer=setInterval(loadMessages,2000)
+  document.getElementById('mainApp').style.display='flex';loadedFolders={};document.getElementById('chatArea').innerHTML='';
+  addLog('登录成功: '+u);loadMessages();pollingTimer=setInterval(loadMessages,2000)
 }
 
 async function doRegister(){
@@ -193,9 +189,8 @@ async function doRegister(){
   if(r){showToast('注册成功！等待管理员审核');addLog('注册成功: '+u);document.getElementById('registerModal').style.display='none';document.getElementById('welcomeModal').style.display='flex'}else{showToast('注册失败，查看运行日志');addLog('注册失败: API错误')}
 }
 
-function logout(){if(pollingTimer)clearInterval(pollingTimer);currentUser='';localStorage.removeItem('chat_user');document.getElementById('mainApp').style.display='none';document.getElementById('welcomeModal').style.display='flex';addLog('已退出')}
+function logout(){if(pollingTimer)clearInterval(pollingTimer);currentUser='';localStorage.removeItem('chat_user');loadedFolders={};document.getElementById('mainApp').style.display='none';document.getElementById('welcomeModal').style.display='flex';addLog('已退出')}
 
-// ═══════ 管理员 ═══════
 function showAdminModal(){document.getElementById('adminModal').style.display='flex';document.getElementById('adminPass').value=''}
 async function verifyAdmin(){
   var pw=document.getElementById('adminPass').value;if(!pw)return;
@@ -204,34 +199,205 @@ async function verifyAdmin(){
     if(confirm('管理员模式已激活。\n\n要删除所有聊天记录吗？')){if(confirm('再次确认：删除所有聊天记录？'))deleteAllMessages()}
   }else{showToast('密码错误')}
 }
-async function deleteAllMessages(){var list=await api('contents/'+MSG_DIR);if(!list||!Array.isArray(list))return;var count=0;for(var i=0;i<list.length;i++){if(list[i].name==='.gitkeep')continue;if(list[i].type==='dir'){try{var sub=await api('contents/'+MSG_DIR+'/'+list[i].name);if(sub&&Array.isArray(sub)){for(var j=0;j<sub.length;j++){if(sub[j].name==='.gitkeep')continue;await api('contents/'+MSG_DIR+'/'+list[i].name+'/'+sub[j].name,'DELETE',{message:'删除',sha:sub[j].sha,branch:'main'});count++}}var self=await api('contents/'+MSG_DIR+'/'+list[i].name+'/.gitkeep');if(self)await api('contents/'+MSG_DIR+'/'+list[i].name+'/.gitkeep','DELETE',{message:'删除文件夹',sha:self.sha,branch:'main'}).catch(function(){})}catch(e){addLog('删除失败: '+e.message)}}}showToast('已删除 '+count+' 项');addLog('聊天记录已清空');loadMessages()}
+async function deleteAllMessages(){var list=await api('contents/'+MSG_DIR);if(!list||!Array.isArray(list))return;var count=0;for(var i=0;i<list.length;i++){if(list[i].name==='.gitkeep')continue;if(list[i].type==='dir'){try{var sub=await api('contents/'+MSG_DIR+'/'+list[i].name);if(sub&&Array.isArray(sub)){for(var j=0;j<sub.length;j++){if(sub[j].name==='.gitkeep')continue;await api('contents/'+MSG_DIR+'/'+list[i].name+'/'+sub[j].name,'DELETE',{message:'删除',sha:sub[j].sha,branch:'main'});count++}}var self=await api('contents/'+MSG_DIR+'/'+list[i].name+'/.gitkeep');if(self)await api('contents/'+MSG_DIR+'/'+list[i].name+'/.gitkeep','DELETE',{message:'删除文件夹',sha:self.sha,branch:'main'}).catch(function(){})}catch(e){addLog('删除失败: '+e.message)}}}loadedFolders={};document.getElementById('chatArea').innerHTML='';showToast('已删除 '+count+' 项');addLog('聊天记录已清空');loadMessages()}
 
-// ═══════ 消息 ═══════
 async function sendMessage(){
   var msg=document.getElementById('msgInput').value.trim();if(!msg&&!attachFile)return;if(msg&&(msg.indexOf('__')>=0||msg.indexOf('/')>=0||msg.indexOf('\\')>=0)){showToast('消息含非法字符');return}
-  var now=new Date();var ts=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+'-'+String(now.getMinutes()).padStart(2,'0')+'-'+String(now.getSeconds()).padStart(2,'0');
-  var safeMsg=msg||'(附件)';var folderName=ts+'__'+currentUser+'__'+safeMsg;
-  addLog('发送: '+folderName.substring(0,50));
-  var r=await api('contents/'+MSG_DIR+'/'+folderName+'/.gitkeep','PUT',{message:'消息',content:btoa('#'),branch:'main'});
-  if(!r){showToast('发送失败');return}
-  if(attachFile){if(attachFile.size>25*1024*1024){showToast('附件<25MB')}else{await uploadAttach(MSG_DIR+'/'+folderName)}}
-  document.getElementById('msgInput').value='';attachFile=null;loadMessages()
+  var now=new Date();var ts=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+'-'+String(now.getMinutes()).padStart(2,'0')+'-'+String('+String(now.getSeconds()).now.getSeconds()).padStart(2,'0');
+  var safeMsg=msg||padStart(2,'0');
+  var safeMsg=msg||'(附件)';var folderName='(附件)';var folderName=ts+'__'+currentUser+'__'+safeMsg;
+ts+'__'+currentUser+'__'+safeMsg;
+  addLog('发送: '+folderName.substring  addLog('发送: '+folderName.substring(0,50));
+  var r=await api('(0,50));
+  var r=await api('contents/'+MSG_DIR+'/'+contents/'+MSG_DIR+'/'+folderNamefolderName+'/.gitkeep','PUT',{message:'消息',+'/.gitkeep','PUT',{message:'消息',content:bcontent:btoa('#'),branch:'main'});
+ toa('#'),branch:'main'});
+  if(! if(!r){showToast('发送失败');return}
+r){showToast('发送失败');return}
+  if(attach  if(attachFile){File){if(attachFile.size>25*1024*1024){if(attachFile.size>25*1024*1024){showToast('附件showToast('附件<25<25MB')}else{await uploadAttach(MSG_DIRMB')}else{await uploadAttach(MSG_DIR+'/'+folderName)}}
+  document.getElementById('msgInput').value='';attachFile=null;
+  // ★ 发送后+'/'+folderName)}}
+  document.getElementById('msgInput').value='';attachFile=null;
+  // ★ 发送后立即加载新消息（增量立即加载新消息（增量）
+  loadMessages()
+）
+  loadMessages()
 }
-async function uploadAttach(folderPath){var f=attachFile;return new Promise(function(resolve){var r=new FileReader();r.onload=async function(e){var c=btoa(new Uint8Array(e.target.result).reduce(function(d,b){return d+String.fromCharCode(b)},''));await api('contents/'+folderPath+'/'+f.name,'PUT',{message:'附件',content:c,branch:'main'});addLog('附件: '+f.name);resolve()};r.readAsArrayBuffer(f)})}
-document.getElementById('attachInput').addEventListener('change',function(e){if(e.target.files.length>0){attachFile=e.target.files[0];showToast('已选: '+attachFile.name)}});
+async function uploadAttach}
+async function uploadAttach(folderPath){var f=attach(folderPath){var f=attachFile;return newFile;return new Promise(function(resolve){var r=new FileReader();r Promise(function(resolve){var r=new FileReader();r.onload=async.onload=async function(e){var c=btoa(new Uint8Array(e function(e){var c=btoa(new Uint8Array(e.target.result.target.result).reduce(function(d,b){return d).reduce(function(d,b){return d+String.fromCharCode(b)},''));await+String.fromCharCode(b)},''));await api('contents/'+ api('contents/'folderPath+'/'+f.name,'PUT',{+folderPath+'/'+f.name,'PUT',{message:'附件',content:cmessage:'附件',,branch:'main'});addLog('附件: '+f.name);resolve()};r.readAsArraycontent:c,branch:'main'});addLog('附件: '+f.name);resolve()};r.readAsArrayBuffer(f)})Buffer(f)})}
+document.getElementById('attachInput}
+document.getElementById('attachInput').addEventListener('').addchange',function(e){if(e.target.filesEventListener('change',function(e){if(e.target.files.length>0){attachFile=e.target.files[0];showToast('.length>0){attachFile=e.target.files[0];show已选: '+attachFile.name)}});
 
-// ═══════ 加载消息 ═══════
-async function loadMessages(){if(!currentUser)return;var list=await api('contents/'+MSG_DIR);if(!list||!Array.isArray(list))return;var msgs=[];for(var i=0;i<list.length;i++){if(list[i].name==='.gitkeep')continue;if(list[i].type==='dir'){var parts=list[i].name.split('__',3);if(parts.length>=3)msgs.push({folder:list[i],time:parts[0],user:parts[1],text:parts[2]})}}msgs.sort(function(a,b){return a.time.localeCompare(b.time)});var area=document.getElementById('chatArea');area.innerHTML='';if(msgs.length===0){area.innerHTML='<div style="text-align:center;opacity:0.5;padding:40px">暂无消息</div>';return}for(var i=0;i<msgs.length;i++){await renderMsg(area,msgs[i])}area.scrollTop=area.scrollHeight}
-async function renderMsg(area,m){var row=document.createElement('div');row.className='msg-row';if(m.user===currentUser)row.classList.add('mine');var ue=document.createElement('div');ue.className='msg-user';ue.innerHTML='<span>'+m.user+'</span> '+m.time.replace('_',' ');var bb=document.createElement('div');bb.className='msg-bubble';bb.textContent=m.text;row.appendChild(ue);row.appendChild(bb);
-  try{var sub=await api('contents/'+MSG_DIR+'/'+m.folder.name);if(sub&&Array.isArray(sub)){for(var j=0;j<sub.length;j++){if(sub[j].name==='.gitkeep')continue;var ad=document.createElement('div');ad.className='msg-attachment';var ext=sub[j].name.split('.').pop().toLowerCase();if(['jpg','jpeg','png','gif','bmp','webp','svg'].indexOf(ext)>=0){var img=document.createElement('img');img.src=sub[j].download_url;img.onclick=function(){window.open(sub[j].download_url)};ad.appendChild(img)}else{var a=document.createElement('a');a.href=sub[j].download_url;a.textContent='📎 '+sub[j].name;a.download=sub[j].name;ad.appendChild(a)}bb.appendChild(ad)}}}catch(e){}area.appendChild(row)}
+// ★Toast('已选: '+attachFile.name)}});
 
-// ═══════ 初始化 ═══════
+// ★★★ ★★ 增量加载消息 - 不再清空整个聊天区 ★增量加载消息 - 不再清空整个聊天区 ★★★
+async function loadMessages(){
+ ★★
+async function loadMessages(){
+  if(!currentUser)return;
+  var list=await if(!currentUser)return;
+  var list=await api('contents/' api('contents/'+MSG_DIR);
++MSG_DIR);
+  if(!list||!  if(!list||!Array.isArray(list))return;
+ Array.isArray(list))return;
+  var area=document.getElementById('chatArea');
+  var has var area=document.getElementById('chatArea');
+ New=false;
+  
+  for(var i=0 var hasNew=false;
+  
+  for(var i=0;i<list.length;i++){
+    if(list[i;i<list.length;i++){
+    if].name==='.gitkeep')(list[i].name==='.gitkeep')continue;
+    if(list[i].type!=='dir')continue;
+    // continue;
+    if(list[i].type!=='dir')continue;
+    // 如果这个文件夹已经加载过，跳过如果这个文件夹已经加载过，跳过
+   
+    if(loadedFold if(loadedFolders[list[i].name])continue;
+    
+    var parts=listers[list[i].name])continue;
+    
+    var parts=list[i].name.split('__',3);
+    if(parts.length<3[i].name.split('__',3);
+    if(parts.length<3)continue)continue;
+    
+    // 标记为已加载;
+    
+    // 标记为已加载
+    loadedFolders
+    loadedFolders[list[i].name]=true;
+   [list[i].name]=true;
+    hasNew=true;
+    
+    var row=document.createElement('div');
+    row.className hasNew=true;
+    
+    var row=document.createElement('div');
+    row.className='msg-row';
+    if(parts[1]===currentUser)row='msg-row';
+    if(parts[1]===currentUser)row.classList.add('mine.classList.add('mine');
+    
+    var ue=document.createElement('');
+    
+    var ue=document.createElement('div');
+    ue.className='msg-user';
+    uediv');
+    ue.className='msg-user';
+    ue.innerHTML='.innerHTML='<span<span>'+parts[1]+'</span>>'+parts[1]+'</span> '+parts[0].replace('_ '+parts[0].replace('_',' ');
+    
+   ',' ');
+    
+    var bb=document.createElement('div');
+    bb.className var bb=document.createElement('div');
+    bb.className='msg-bubble';
+    bb.textContent=='msg-bubble';
+    bb.textContent=parts[2];
+    
+   parts[2];
+    
+    row.appendChild(ue);row.appendChild(bb);
+    area.appendChild(row);
+    
+    // 异步加载附件
+    (function(row, row.appendChild(ue);row.appendChild(bb);
+    area.appendChild(row);
+    
+    // 异步加载附件
+    (function(row,bb,folderName){
+     bb,folderName){
+      api('contents/'+MSG api('contents/'+MSG_DIR+'/'+folderName).then_DIR+'/'+folderName).then(function(sub){
+        if(sub(function(sub){
+        if(sub&&Array.isArray(sub)){
+          for(var j&&Array.isArray(sub)){
+          for(var j=0;j<sub.length;j++){
+=0;j<sub.length;j++){
+            if(sub[j].name==='            if(sub[j].name==='.git.gitkeep')continue;
+            var ad=document.createElement('div');adkeep')continue;
+            var ad=document.createElement('div');ad.className='msg-attachment';
+            var ext=sub[j].name.split.className='msg-attachment';
+            var ext=sub[j].name.split('.'('.').pop).pop().toLowerCase();
+().toLowerCase();
+            if            if(['jpg','jpeg','png','(['jpg','jpeg','png','gif','bgif','bmp','webp','svgmp','webp','svg'].index'].indexOf(ext)Of(ext)>=0){
+              var img>=0){
+              var img=document=document.createElement('img');img.src=sub[j].download_url;
+             .createElement('img');img.src=sub[j].download_url;
+              img.onclick=function(){window.open(sub[j].download img.onclick=function(){window.open(sub[j].download_url)};ad.appendChild(img_url)};ad.appendChild(img);
+            }else{
+             );
+            }else{
+              var a=document.createElement('a');a.href=sub[j].download var a=document.createElement('a');a.href=sub[j].download_url;
+              a.textContent='📎 '+sub[j].name;a.download=sub[j].name;ad.appendChild(a);
+            }
+            bb.appendChild(ad);
+         _url;
+              a.textContent='📎 '+sub[j].name;a.download=sub[j].name;ad.appendChild(a);
+            }
+            bb.appendChild(ad);
+          }
+        }
+      }).catch(function(){});
+    }
+        }
+      }).catch(function(){});
+    })(row,bb, })(row,bb,list[i].name);
+  }
+  
+  //list[i].name);
+  }
+  
+  // 有消息时才滚动到底部
+  if 有消息时才滚动到底部
+  if(hasNew)area.scrollTop=area.scroll(hasNew)area.scrollTop=area.scrollHeight;
+  
+  // 如果整个Height;
+  
+  // 如果整个区域为空，显示提示
+  if(Object.keys(loadedFolders).length===0){
+    area.innerHTML='<div style="text-align:center区域为空，显示提示
+  if(Object.keys(loadedFolders).length===0){
+    area.innerHTML='<div style="text-align:center;opacity:0.5;padding:40px">暂无消息，来发第一条吧</div;opacity:0.5;padding:40px">暂无消息，来发第一条吧</div>';
+ >';
+  }
+}
+
+document.addEventListener('DOM }
+}
+
 document.addEventListener('DOMContentLoaded',async function(){
-  var st=localStorage.getItem('chat_theme')||'dark';theme=st;if(theme==='light'){document.body.classList.add('light');document.getElementById('themeBtn').textContent='☀️ 白天模式'}
+  var st=localStorage.getItem('ContentLoaded',async function(){
+  var st=localStorage.getItem('chat_theme')||'dark';theme=st;if(chat_theme')||'dark';theme=st;if(theme==='lighttheme==='light'){document.body.classList.add('light'){document.body.classList.add');document.getElementById('themeBtn').textContent='☀️ 白天('light');document.getElementById('themeBtn').textContent='☀️ 白天模式'}
   await initToken();
-  var su=localStorage.getItem('chat_user');if(su){document.getElementById('welcomeModal').style.display='none';try{var check=await api('contents/'+USER_DIR+'/'+su+'.txt');if(check&&check.content){var txt='';try{txt=decodeURIComponent(escape(atob(check.content.replace(/\s/g,''))))}catch(e){txt=atob(check.content.replace(/\s/g,''))}if(txt.split('\n')[1].trim()==='1'){currentUser=su;document.getElementById('mainApp').style.display='flex';loadMessages();pollingTimer=setInterval(loadMessages,2000);addLog('自动登录: '+su)}else{localStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex';addLog('自动登录失败: 待审核')}}else{localStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex'}}catch(e){document.getElementById('welcomeModal').style.display='flex';addLog('自动登录失败: '+e.message)}}else{document.getElementById('welcomeModal').style.display='flex'}
-  addLog('聊天室就绪')
+  var模式'}
+  await initToken();
+  var su=localStorage.getItem('chat_user su=localStorage.getItem('chat_user');
+ ');
+  if(s if(su){document.getElementById('welcomeModalu){document.getElementById('welcomeModal').style.display='none';
+    try{var').style.display='none';
+    try{var check=await api('contents/'+USER_DIR+'/'+su+'. check=await api('contents/'+USER_DIR+'/'+su+'.txt');
+      if(check&&check.contenttxt');
+      if(check&&check.content){
+        var txt='';try{txt=decodeURIComponent(){
+        var txt='';try{txt=decodeURIComponent(escape(atob(checkescape(atob(check.content.replace(/\s/g,''))))}catch(e){txt=atob(check.content.replace(/\s/g,''))}
+        if(txt.split.content.replace(/\s/g,''))))}catch(e){txt=atob(check.content.replace(/\s/g,''))}
+        if(t('\n')[1].trim()==='1'){
+          currentUser=su;document.getElementById('mainApp').style.display='xt.split('\n')[1].trim()==='1'){
+          currentUser=su;document.getElementById('mainApp').style.display='flex';
+          loadedflex';
+          loadedFolders={};loadMessagesFolders={};loadMessages();pollingTimer=setInterval(loadMessages();pollingTimer=setInterval(loadMessages,2000);addLog('自动,2000);addLog('自动登录: '+su登录: '+su)
+        }else)
+        }else{localStorage.removeItem('chat_user');document{localStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex'}
+      }else{localStorage.getElementById('welcomeModal').style.display='flex'}
+      }else{.removeItem('chat_user');document.getElementById('wlocalStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex'}
+    }catch(e){document.getElementById('welcomeelcomeModal').style.display='flex'}
+    }catch(e){document.getElementById('welcomeModal').Modal').style.display='flex'}
+style.display='flex'}
+  }else{document.getElementById('welcome  }else{document.getElementById('welcomeModal').style.display='flex'}
+Modal').style.display='flex'}
+  addLog('聊天  addLog('聊天室就绪')
+室就绪')
 });
+</});
 </script>
+</bodyscript>
 </body>
 </html>
