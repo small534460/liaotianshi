@@ -28,11 +28,10 @@
     .topbar .gear-btn:hover{opacity:1}
     .chat-area{flex:1;overflow-y:auto;padding:16px}
     .msg-row{margin-bottom:12px;display:flex;flex-direction:column;align-items:flex-start}
-    .msg-row.mine{align-items:flex-start}
     .msg-meta{font-size:11px;margin-bottom:2px;opacity:0.7;display:flex;align-items:center;gap:6px}
     .msg-meta .user-tag{background:var(--accent);color:#fff;padding:1px 8px;border-radius:8px;font-size:10px;font-weight:600}
     .msg-bubble{background:var(--other-msg);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;word-break:break-word;line-height:1.5;font-size:14px;max-width:80%}
-    .msg-row.mine .msg-bubble{background:var(--my-msg)}
+    .msg-row.mine .msg-bubble{background:var(--my-msg);border-color:rgba(96,165,250,0.3)}
     .msg-attachment{margin-top:6px}
     .msg-attachment img{max-width:180px;max-height:180px;border-radius:8px;cursor:pointer;display:block}
     .msg-attachment a{color:var(--accent);font-size:12px;text-decoration:none;display:block;margin-top:2px}
@@ -122,26 +121,26 @@
 </div>
 
 <script>
-var ENC_TOKEN='59a643c206c92361b1fbd493f07065e64fff6a57cd90779631dae58a49c8457f0ca702ed01fb2a5b';
+// ═══════════ Supabase 配置 ═══════════
+var SUPABASE_URL='https://pqllflxrvdwjnoxspdmn.supabase.co';
+var SUPABASE_KEY='sb_publishable_PHwu9kUiYMtPKGRXdE3Ljg_7J0ps_';
 var ADMIN_HASH='0cd875127059c80ae5744c59a4e1183a123f4f9dea543f9391bcff9317f0b4f6';
-var REPO_USER='small534460';var REPO_NAME='LTS';var MSG_DIR='messages';var USER_DIR='users';
-var token='';var currentUser='';var pollingTimer=null;var logs=[];var theme='dark';var attachFile=null;
-var loadedFolders={};
+var currentUser='';var pollingTimer=null;var logs=[];var theme='dark';var attachFile=null;
+var loadedIds={};
+var headers={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
 
 function addLog(m){var t=new Date().toLocaleTimeString();logs.push('['+t+'] '+m);console.log(m);if(logs.length>200)logs.shift()}
 function showToast(m){var d=document.createElement('div');d.className='toast';d.textContent=m;document.body.appendChild(d);setTimeout(function(){d.remove()},2000)}
 function backToWelcome(){document.getElementById('loginModal').style.display='none';document.getElementById('registerModal').style.display='none';document.getElementById('welcomeModal').style.display='flex'}
 
-function decryptToken(pw){return crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw)).then(function(h){var hb=new Uint8Array(h),eb=[];for(var i=0;i<ENC_TOKEN.length;i+=2)eb.push(parseInt(ENC_TOKEN.substr(i,2),16));var db=[];for(var i=0;i<eb.length;i++)db.push(eb[i]^hb[i%hb.length]);return new TextDecoder().decode(new Uint8Array(db))})}
-async function initToken(){try{token=await decryptToken('534460');addLog('令牌已就绪')}catch(e){addLog('令牌解密失败: '+e.message)}}
-
-async function api(endpoint,method,data){
-  method=method||'GET';data=data||null;
-  if(!token){try{await initToken()}catch(e){}if(!token){addLog('无令牌');return null}}
-  var url='https://api.github.com/repos/'+REPO_USER+'/'+REPO_NAME+'/'+endpoint;
-  var opts={method:method,headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}};
-  if(data)opts.body=JSON.stringify(data);
-  try{var r=await fetch(url,opts);if(r.status===204)return null;if(r.status===404)return null;if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}catch(e){addLog('API: '+e.message);return null}
+async function supabaseQuery(table,method,body,params){
+  var url=SUPABASE_URL+'/rest/v1/'+table;
+  if(params){url+='?'+params}
+  var opts={method:method||'GET',headers:headers};
+  if(body)opts.body=JSON.stringify(body);
+  if(method==='PATCH')opts.headers['Prefer']='return=representation';
+  if(method==='DELETE')opts.headers['Prefer']='return=representation';
+  try{var r=await fetch(url,opts);if(!r.ok)throw new Error('HTTP '+r.status);var txt=await r.text();return txt?JSON.parse(txt):null}catch(e){addLog('DB: '+e.message);return null}
 }
 
 function showLog(){document.getElementById('logModal').style.display='flex';renderLog()}
@@ -157,133 +156,80 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 function showLoginModal(){document.getElementById('welcomeModal').style.display='none';document.getElementById('loginModal').style.display='flex';document.getElementById('loginUser').value='';document.getElementById('loginPass').value=''}
 function showRegisterModal(){document.getElementById('welcomeModal').style.display='none';document.getElementById('registerModal').style.display='flex';document.getElementById('regUser').value='';document.getElementById('regPass').value=''}
 
+// ═══════════ 登录/注册 ═══════════
 async function doLogin(){
   var u=document.getElementById('loginUser').value.trim();var p=document.getElementById('loginPass').value;
   if(!u||!p){showToast('请填写完整');return}
-  var info=await api('contents/'+USER_DIR+'/'+u+'.txt');
-  if(!info||!info.content){showToast('用户不存在');return}
-  var txt=atob(info.content.replace(/\s/g,''));var lines=txt.split('\n');
-  if(lines[0]!==p){showToast('密码错误');return}
-  if(lines[1].trim()!=='1'){showToast('账户待审核');return}
+  var users=await supabaseQuery('users','GET',null,'username=eq.'+encodeURIComponent(u)+'&limit=1');
+  if(!users||users.length===0){showToast('用户不存在');return}
+  if(users[0].password!==p){showToast('密码错误');return}
+  if(!users[0].approved){showToast('账户待审核');return}
   currentUser=u;localStorage.setItem('chat_user',u);
   document.getElementById('loginModal').style.display='none';
   document.getElementById('mainApp').style.display='flex';
-  loadedFolders={};document.getElementById('chatArea').innerHTML='';
+  loadedIds={};document.getElementById('chatArea').innerHTML='';
   addLog('登录成功: '+u);loadMessages();pollingTimer=setInterval(loadMessages,2000)
 }
 
 async function doRegister(){
   var u=document.getElementById('regUser').value.trim();var p=document.getElementById('regPass').value;
   if(!u||!p){showToast('请填写完整');return}
-  if(!token){try{await initToken()}catch(e){}if(!token){showToast('系统错误');return}}
-  var check=await api('contents/'+USER_DIR+'/'+u+'.txt');
-  if(check){showToast('用户名已存在');return}
-  var cont=p+'\n0';var b64=btoa(unescape(encodeURIComponent(cont)));
-  var r=await api('contents/'+USER_DIR+'/'+u+'.txt','PUT',{message:'注册 '+u,content:b64,branch:'main'});
-  if(r){showToast('注册成功！等待管理员审核');backToWelcome()}else{showToast('注册失败')}
+  var check=await supabaseQuery('users','GET',null,'username=eq.'+encodeURIComponent(u)+'&limit=1');
+  if(check&&check.length>0){showToast('用户名已存在');return}
+  var r=await supabaseQuery('users','POST',{username:u,password:p,approved:false});
+  if(r){showToast('注册成功！等待管理员审核');backToWelcome();addLog('新用户注册: '+u)}else{showToast('注册失败')}
 }
 
-function logout(){if(pollingTimer)clearInterval(pollingTimer);currentUser='';localStorage.removeItem('chat_user');loadedFolders={};document.getElementById('mainApp').style.display='none';document.getElementById('welcomeModal').style.display='flex'}
+function logout(){if(pollingTimer)clearInterval(pollingTimer);currentUser='';localStorage.removeItem('chat_user');loadedIds={};document.getElementById('mainApp').style.display='none';document.getElementById('welcomeModal').style.display='flex';addLog('已退出')}
 
+// ═══════════ 管理员 ═══════════
 function showAdminModal(){document.getElementById('adminModal').style.display='flex';document.getElementById('adminPass').value=''}
 async function verifyAdmin(){
   var pw=document.getElementById('adminPass').value;if(!pw)return;
   var hh=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw)).then(function(h){return Array.from(new Uint8Array(h)).map(function(b){return b.toString(16).padStart(2,'0')}).join('')});
   if(hh===ADMIN_HASH){document.getElementById('adminModal').style.display='none';if(confirm('要删除所有聊天记录吗？')){if(confirm('再次确认'))deleteAllMessages()}}else{showToast('密码错误')}
 }
+async function deleteAllMessages(){await supabaseQuery('messages','DELETE',null,'username=neq.null');loadedIds={};document.getElementById('chatArea').innerHTML='';showToast('聊天记录已清空');addLog('聊天记录已清空')}
 
-// ★★★ 修复后的批量删除 ★★★
-async function deleteAllMessages(){
-  showToast('正在删除...');
-  var list=await api('contents/'+MSG_DIR);
-  if(!list||!Array.isArray(list)){showToast('无法获取消息列表');return}
-  var count=0;
-  
-  for(var i=0;i<list.length;i++){
-    if(list[i].name==='.gitkeep'||list[i].type!=='dir')continue;
-    var folderName=list[i].name;
-    addLog('删除文件夹: '+folderName);
-    
-    // 获取文件夹内容
-    var sub=await api('contents/'+MSG_DIR+'/'+folderName);
-    if(sub&&Array.isArray(sub)){
-      for(var j=0;j<sub.length;j++){
-        var filePath=MSG_DIR+'/'+folderName+'/'+sub[j].name;
-        try{
-          await api('contents/'+filePath,'DELETE',{message:'删除',sha:sub[j].sha,branch:'main'});
-          count++;
-        }catch(e1){
-          // 重试：重新获取sha
-          addLog('删除失败，重试: '+sub[j].name);
-          try{
-            var ref=await api('contents/'+filePath+'?ref=main');
-            if(ref&&ref.sha){await api('contents/'+filePath,'DELETE',{message:'删除',sha:ref.sha,branch:'main'});count++}
-          }catch(e2){addLog('彻底失败: '+sub[j].name+' - '+e2.message)}
-        }
-      }
-    }
-  }
-  
-  // 重新获取列表检查残留
-  var check=await api('contents/'+MSG_DIR);
-  if(check&&Array.isArray(check)){
-    for(var k=0;k<check.length;k++){
-      if(check[k].name==='.gitkeep'||check[k].type!=='dir')continue;
-      // 尝试直接用sha删除文件夹条目
-      try{await api('contents/'+MSG_DIR+'/'+check[k].name+'?ref=main','DELETE',{message:'删除',sha:check[k].sha,branch:'main'});count++}catch(e){}
-    }
-  }
-  
-  loadedFolders={};document.getElementById('chatArea').innerHTML='';
-  showToast('已删除 '+count+' 条记录');addLog('删除完成: '+count+' 条');
-}
-
-// 发送消息
+// ═══════════ 发送消息 ═══════════
 async function sendMessage(){
   var msg=document.getElementById('msgInput').value.trim();
   if(!msg&&!attachFile){return}
   var now=new Date();var ts=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+'-'+String(now.getMinutes()).padStart(2,'0')+'-'+String(now.getSeconds()).padStart(2,'0');
-  var safeMsg=msg||'(附件)';var fn=ts+'__'+currentUser+'__'+safeMsg;
-  var r=await api('contents/'+MSG_DIR+'/'+fn+'/.gitkeep','PUT',{message:'消息',content:btoa('#'),branch:'main'});
-  if(r){if(attachFile&&attachFile.size<=25*1024*1024){await uploadAttach(MSG_DIR+'/'+fn)}document.getElementById('msgInput').value='';attachFile=null;loadedFolders[fn]=true;await addMessageToChat(fn,ts,currentUser,safeMsg)}
+  var safeMsg=msg||'(附件)';
+  var r=await supabaseQuery('messages','POST',{username:currentUser,content:safeMsg});
+  if(r&&r.length>0){document.getElementById('msgInput').value='';attachFile=null;loadedIds[r[0].id]=true;addMsgToChat(r[0]);addLog('消息已发送')}else{showToast('发送失败')}
 }
-async function uploadAttach(fp){var f=attachFile;return new Promise(function(resolve){var r=new FileReader();r.onload=async function(e){var c=btoa(new Uint8Array(e.target.result).reduce(function(d,b){return d+String.fromCharCode(b)},''));await api('contents/'+fp+'/'+f.name,'PUT',{message:'附件',content:c,branch:'main'});resolve()};r.readAsArrayBuffer(f)})}
 document.getElementById('attachInput').addEventListener('change',function(e){if(e.target.files.length>0){attachFile=e.target.files[0];showToast('已选: '+attachFile.name)}});
 
-async function addMessageToChat(fn,ts,user,text){
+// ═══════════ 显示消息 ═══════════
+function addMsgToChat(msg){
   var area=document.getElementById('chatArea');
-  var row=document.createElement('div');row.className='msg-row';if(user===currentUser)row.classList.add('mine');
-  var meta=document.createElement('div');meta.className='msg-meta';meta.innerHTML='<span class="user-tag">'+user+'</span> <span>'+ts+'</span>';
-  var bb=document.createElement('div');bb.className='msg-bubble';bb.textContent=text;
-  row.appendChild(meta);row.appendChild(bb);area.appendChild(row);
-  var sub=await api('contents/'+MSG_DIR+'/'+fn);
-  if(sub&&Array.isArray(sub)){for(var j=0;j<sub.length;j++){if(sub[j].name==='.gitkeep')continue;var ad=document.createElement('div');ad.className='msg-attachment';var ext=sub[j].name.split('.').pop().toLowerCase();if(['jpg','jpeg','png','gif','bmp','webp','svg'].indexOf(ext)>=0){var img=document.createElement('img');img.src=sub[j].download_url;img.onclick=function(){window.open(this.src)};ad.appendChild(img)}else{var a=document.createElement('a');a.href=sub[j].download_url;a.textContent='📎 '+sub[j].name;a.download=sub[j].name;a.target='_blank';ad.appendChild(a)}bb.appendChild(ad)}}
-  area.scrollTop=area.scrollHeight;
+  var row=document.createElement('div');row.className='msg-row';if(msg.username===currentUser)row.classList.add('mine');
+  var meta=document.createElement('div');meta.className='msg-meta';
+  var d=new Date(msg.created_at);var ts=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+'-'+String(d.getMinutes()).padStart(2,'0')+'-'+String(d.getSeconds()).padStart(2,'0');
+  meta.innerHTML='<span class="user-tag">'+msg.username+'</span> <span>'+ts+'</span>';
+  var bb=document.createElement('div');bb.className='msg-bubble';bb.textContent=msg.content;
+  row.appendChild(meta);row.appendChild(bb);
+  if(msg.attachment_url){var ad=document.createElement('div');ad.className='msg-attachment';var ext=(msg.attachment_name||'').split('.').pop().toLowerCase();if(['jpg','jpeg','png','gif','bmp','webp','svg'].indexOf(ext)>=0){var img=document.createElement('img');img.src=msg.attachment_url;img.onclick=function(){window.open(this.src)};ad.appendChild(img)}else{var a=document.createElement('a');a.href=msg.attachment_url;a.textContent='📎 '+msg.attachment_name;a.download=msg.attachment_name;a.target='_blank';ad.appendChild(a)}bb.appendChild(ad)}
+  area.appendChild(row);area.scrollTop=area.scrollHeight;
 }
 
 async function loadMessages(){
   if(!currentUser)return;
-  var list=await api('contents/'+MSG_DIR);if(!list||!Array.isArray(list))return;
-  for(var i=0;i<list.length;i++){
-    if(list[i].name==='.gitkeep'||list[i].type!=='dir')continue;
-    if(loadedFolders[list[i].name])continue;
-    var parts=list[i].name.split('__',3);if(parts.length<3)continue;
-    loadedFolders[list[i].name]=true;
-    await addMessageToChat(list[i].name,parts[0],parts[1],parts[2]);
-  }
+  var msgs=await supabaseQuery('messages','GET',null,'order=created_at.asc&limit=100');
+  if(!msgs||!Array.isArray(msgs))return;
+  for(var i=0;i<msgs.length;i++){if(!loadedIds[msgs[i].id]){loadedIds[msgs[i].id]=true;addMsgToChat(msgs[i])}}
 }
 
 document.addEventListener('DOMContentLoaded',async function(){
   var st=localStorage.getItem('chat_theme')||'dark';theme=st;if(theme==='light'){document.body.classList.add('light');document.getElementById('themeBtn').textContent='☀️ 白天模式'}
-  await initToken();
   var su=localStorage.getItem('chat_user');
   if(su){document.getElementById('welcomeModal').style.display='none';
-    try{var check=await api('contents/'+USER_DIR+'/'+su+'.txt');
-      if(check&&check.content){var txt=atob(check.content.replace(/\s/g,''));if(txt.split('\n')[1].trim()==='1'){currentUser=su;document.getElementById('mainApp').style.display='flex';loadedFolders={};loadMessages();pollingTimer=setInterval(loadMessages,2000);addLog('自动登录: '+su)}else{localStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex'}}
-      else{localStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex'}
-    }catch(e){document.getElementById('welcomeModal').style.display='flex'}
+    var users=await supabaseQuery('users','GET',null,'username=eq.'+encodeURIComponent(su)+'&limit=1');
+    if(users&&users.length>0&&users[0].approved){currentUser=su;document.getElementById('mainApp').style.display='flex';loadedIds={};loadMessages();pollingTimer=setInterval(loadMessages,2000);addLog('自动登录: '+su)}else{localStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex'}
   }else{document.getElementById('welcomeModal').style.display='flex'}
-  addLog('聊天室就绪')
+  addLog('聊天室就绪（Supabase版）')
 });
 </script>
 </body>
