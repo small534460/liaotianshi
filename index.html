@@ -5,27 +5,29 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Small 3 的聊天室</title>
   <style>
-    :root{--bg:#1a1a2e;--msg:#16213e;--text:#e0e0e0;--accent:#60a5fa;--accent2:#3b82f6;--my-msg:#1a3a2a;--other-msg:#16213e;--input-bg:#0f1724;--sidebar-bg:rgba(0,0,0,0.7);--border:rgba(255,255,255,0.1);--radius:12px;}
-    body.light{--bg:#f0f0f0;--msg:#ffffff;--text:#333;--my-msg:#e3f2fd;--other-msg:#ffffff;--input-bg:#e8e8e8;--sidebar-bg:rgba(255,255,255,0.9);--border:rgba(0,0,0,0.1);}
+    :root{--bg:#1a1a2e;--text:#e0e0e0;--accent:#60a5fa;--accent2:#3b82f6;--my-msg:#1a3a2a;--other-msg:#16213e;--input-bg:#0f1724;--sidebar-bg:rgba(0,0,0,0.8);--border:rgba(255,255,255,0.1);--radius:12px;}
+    body.light{--bg:#f0f0f0;--text:#333;--my-msg:#e3f2fd;--other-msg:#ffffff;--input-bg:#e8e8e8;--sidebar-bg:rgba(255,255,255,0.9);--border:rgba(0,0,0,0.1);}
     *{box-sizing:border-box;margin:0;padding:0}
     body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;height:100vh;display:flex;overflow:hidden;transition:all .3s}
+    
     .sidebar-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;display:none}
     .sidebar-overlay.show{display:block}
-    .sidebar{position:fixed;top:0;left:-300px;width:280px;height:100%;background:var(--sidebar-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);z-index:1000;transition:left .3s;display:flex;flex-direction:column;padding:20px 16px;border-right:1px solid var(--border)}
+    .sidebar{position:fixed;top:0;left:-300px;width:280px;height:100%;background:var(--sidebar-bg);backdrop-filter:blur(15px);z-index:1000;transition:left .3s;display:flex;flex-direction:column;padding:20px 16px;border-right:1px solid var(--border)}
     .sidebar.open{left:0}
     .sidebar-close{position:absolute;top:10px;right:10px;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer}
     .sidebar-header{text-align:center;margin-bottom:20px}
-    .sidebar-header img{width:60px;height:60px;border-radius:50%;border:3px solid var(--accent);object-fit:cover}
+    .sidebar-header img{width:60px;height:60px;border-radius:50%;border:3px solid var(--accent)}
     .sidebar-header h3{margin-top:8px;font-size:16px;color:var(--accent)}
     .sidebar-btn{display:block;width:100%;padding:12px;margin:6px 0;background:rgba(96,165,250,0.1);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:14px;text-align:left;transition:all .2s}
     .sidebar-btn:hover{background:rgba(96,165,250,0.2);border-color:var(--accent)}
     .sidebar-btn.danger{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3)}
     .sidebar-btn.danger:hover{background:rgba(239,68,68,0.2)}
-    .main{flex:1;display:flex;flex-direction:column;height:100%;position:relative}
-    .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border);z-index:10}
+    
+    .main{flex:1;display:flex;flex-direction:column;height:100%}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border)}
     .topbar h2{font-size:18px;font-weight:600;color:var(--accent)}
-    .topbar .gear-btn{background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;opacity:0.7}
-    .topbar .gear-btn:hover{opacity:1}
+    .topbar .gear-btn{background:none;border:none;color:var(--text);font-size:22px;cursor:pointer}
+    
     .chat-area{flex:1;overflow-y:auto;padding:16px}
     .msg-row{margin-bottom:12px;display:flex;flex-direction:column;align-items:flex-start}
     .msg-meta{font-size:11px;margin-bottom:2px;opacity:0.7;display:flex;align-items:center;gap:6px}
@@ -33,17 +35,17 @@
     .msg-bubble{background:var(--other-msg);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;word-break:break-word;line-height:1.5;font-size:14px;max-width:80%}
     .msg-row.mine .msg-bubble{background:var(--my-msg);border-color:rgba(96,165,250,0.3)}
     .msg-attachment{margin-top:6px}
-    .msg-attachment img{max-width:180px;max-height:180px;border-radius:8px;cursor:pointer;display:block}
-    .msg-attachment a{color:var(--accent);font-size:12px;text-decoration:none;display:block;margin-top:2px}
-    .input-area{display:flex;gap:8px;padding:12px 16px;background:var(--bg);border-top:1px solid var(--border);align-items:flex-end}
-    .input-area textarea{flex:1;padding:10px 14px;border-radius:20px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;resize:none;outline:none;max-height:100px;min-height:18px;font-family:inherit;line-height:1.4}
+    .msg-attachment img{max-width:180px;max-height:180px;border-radius:8px;cursor:pointer}
+    .msg-attachment a{color:var(--accent);font-size:12px;text-decoration:none}
+    
+    .input-area{display:flex;gap:8px;padding:12px 16px;background:var(--bg);border-top:1px solid var(--border)}
+    .input-area textarea{flex:1;padding:10px 14px;border-radius:20px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;resize:none;outline:none;max-height:100px;font-family:inherit;line-height:1.4}
     .input-area textarea:focus{border-color:var(--accent)}
-    .input-area button{padding:8px 16px;border-radius:20px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-size:14px;white-space:nowrap;transition:all .2s}
+    .input-area button{padding:8px 16px;border-radius:20px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-size:14px}
     .input-area button:hover{background:var(--accent2)}
-    .input-area .attach-btn{background:rgba(96,165,250,0.2);padding:8px 12px}
+    
     .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:200;display:flex;align-items:center;justify-content:center}
-    .modal-box{background:var(--sidebar-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius:16px;padding:28px;border:1px solid var(--border);max-width:400px;width:90%;animation:pop .3s ease}
-    @keyframes pop{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+    .modal-box{background:var(--sidebar-bg);backdrop-filter:blur(15px);border-radius:16px;padding:28px;border:1px solid var(--border);max-width:400px;width:90%}
     .modal-box h3{font-size:18px;color:var(--accent);margin-bottom:16px;text-align:center}
     .modal-box input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;outline:none;margin-bottom:10px}
     .modal-box input:focus{border-color:var(--accent)}
@@ -52,350 +54,223 @@
     .btn-primary{background:var(--accent);color:#fff}
     .btn-secondary{background:rgba(96,165,250,0.2);color:var(--text);border:1px solid var(--border)}
     .btn-warning{background:#f59e0b;color:#fff}
+    
     .log-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1100;display:flex;align-items:center;justify-content:center}
     .log-box{background:var(--sidebar-bg);backdrop-filter:blur(15px);border-radius:16px;padding:20px;border:1px solid var(--border);max-width:500px;width:90%;max-height:60vh;overflow-y:auto;font-family:monospace;font-size:12px;color:var(--text);line-height:1.6}
     .log-box h3{color:var(--accent);margin-bottom:10px}
+    
     .welcome-btns{display:flex;gap:16px;justify-content:center;margin-top:20px}
     .welcome-btns button{padding:14px 32px;border-radius:12px;font-size:18px;font-weight:600;cursor:pointer;border:none;color:#fff;min-width:120px}
     .welcome-btns .btn-login{background:var(--accent)}
     .welcome-btns .btn-register{background:rgba(96,165,250,0.3);border:2px solid var(--accent)}
+    .welcome-btns button:hover{transform:translateY(-2px)}
+    
     .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.9);color:#fff;padding:10px 24px;border-radius:20px;font-size:14px;z-index:2000;animation:fadeOut 2s ease forwards;pointer-events:none}
     @keyframes fadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}
-    @media(max-width:600px){.msg-bubble{max-width:95%}.input-area{gap:4px;padding:8px}.input-area button{padding:6px 12px;font-size:12px}.welcome-btns button{padding:12px 24px;font-size:16px}}
   </style>
 </head>
 <body>
+
+<!-- 侧边栏 -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <div class="sidebar" id="sidebar">
   <button class="sidebar-close" onclick="closeSidebar()">✕</button>
-  <div class="sidebar-header"><img src="https://i.mituw.com/imgs/2026/03/15/de4945abb96be550.jpg" alt="头像"><h3>Small 3 的聊天室</h3></div>
+  <div class="sidebar-header">
+    <img src="https://i.mituw.com/imgs/2026/03/15/de4945abb96be550.jpg" alt="头像">
+    <h3>Small 3 的聊天室</h3>
+  </div>
   <button class="sidebar-btn" onclick="showAdminModal()">🔐 管理员模式</button>
   <button class="sidebar-btn" onclick="toggleTheme()" id="themeBtn">🌙 夜间模式</button>
   <button class="sidebar-btn" onclick="showLog()">📋 运行日志</button>
   <button class="sidebar-btn danger" onclick="logout()">🚪 退出登录</button>
 </div>
 
+<!-- 主聊天界面 -->
 <div class="main" id="mainApp" style="display:none">
-  <div class="topbar"><div><h2>Small 3 的聊天室</h2></div><button class="gear-btn" onclick="openSidebar()">⚙️</button</button></div>
- ></div>
-  <div <div class="chat-area" id class="chat-area" id="chat="chatArea"></div>
- Area"></div>
-  <div class <div class="input="input-area">
-    <input type-area">
-    <input type="file="file" id" id="attachInput"="attachInput" style="display:none" style="display:none" accept="*/*">
-    accept="*/*">
-    <button class=" <button class="attach-btn" onclick="documentattach-btn" onclick="document.getElementById('.getElementById('attachInput').click()">📎</buttonattachInput').click()">📎</button>
-    <textarea>
-    <textarea id="msgInput" rows id="msgInput" rows="1" placeholder="1" placeholder="输入="输入消息..."消息..." onkeydown="if(event onkeydown="if(event.key==.key==='Enter'&&!event='Enter'&&!event.shift.shiftKey){Key){event.preventDefaultevent.preventDefault();sendMessage()}();sendMessage()}"></textarea"></textarea>
-    <button onclick=">
-    <button onclick="sendMessage()">发送</sendMessage()">button>
+  <div class="topbar">
+    <div><h2>Small 3 的聊天室</h2></div>
+    <button class="gear-btn" onclick="openSidebar()">⚙️</button>
   </div>
-</div发送</button>
+  <div class="chat-area" id="chatArea"></div>
+  <div class="input-area">
+    <textarea id="msgInput" rows="1" placeholder="输入消息..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"></textarea>
+    <button onclick="sendMessage()">发送</button>
   </div>
 </div>
 
-<div>
-
-<div id="welcomeModal" id="welcomeModal" class="modal-over class="modal-overlay">
- lay">
-  <div class <div class="modal="modal-box"><h3-box"><h3>欢迎>欢迎来到 Small 3 的来到 Small 3聊天室</h 的聊天室</h33><div style><div style="text-align:="text-align:center;color:var(--center;color:var(--text);opacitytext);opacity:0:0.7.7;margin;margin-bottom:10px-bottom:">选择一个操作</div>
-10px">选择一个操作</div>
-    <div class    <div class="w="welcome-belcome-btns"><buttontns"><button class="btn-log class="btn-login" onclick="in" onclick="showLoginModal()">登录showLoginModal()">登录</button</button><button class="><button class="btn-regbtn-register"ister" onclick="showRegister onclick="showRegisterModal()Modal()">注册">注册</button</button></div>
-    <div></div>
-    <div style="text-align style="text-align:center:center;margin-top:16px;margin-top:16px"><button"><button class="sidebar-btn class="sidebar-btn" onclick="openSidebar" onclick="openSidebar()" style="display:inline;width:auto;()" style="display:inline;width:auto;padding:padding:8px8px 16px;font-size:13 16px;font-size:13px">px">⚙️ ⚙️ 设置</button></div>
-设置</button></  </div>
+<!-- 欢迎弹窗 -->
+<div id="welcomeModal" class="modal-overlay">
+  <div class="modal-box">
+    <h3>欢迎来到 Small 3 的聊天室</h3>
+    <div style="text-align:center;color:var(--text);opacity:0.7;margin-bottom:10px">选择一个操作</div>
+    <div class="welcome-btns">
+      <button class="btn-login" onclick="showLoginModal()">登录</button>
+      <button class="btn-register" onclick="showRegisterModal()">注册</button>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <button class="sidebar-btn" onclick="openSidebar()" style="display:inline;width:auto;padding:8px 16px;font-size:13px">⚙️ 设置</button>
+    </div>
   </div>
-div>
-</div</div>
-
-<div id="loginModal>
-
-<div id="loginModal" class" class="modal-overlay="modal-overlay" style="display:none">
-  <div" style="display:none">
-  <div class=" class="modal-box"><hmodal-box"><h3>🔑3>🔑 登录</h3>
-    登录</h3>
-    <input type="text" id <input type="text" id="loginUser"="loginUser" placeholder=" placeholder="用户名"用户名" autocomplete autocomplete="off="off">
-    <input">
-    <input type=" type="password"password" id="loginPass" placeholder id="loginPass" placeholder="密码" aut="密码" autocomplete="off">
-ocomplete="    <div classoff">
-    <div class="btn="btn-group-group"><button class="btn-secondary""><button class="btn-secondary" onclick=" onclick="backTobackToWelcome()">返回Welcome()">返回</button><button</button><button class=" class="btn-primary" onclickbtn-primary" onclick="doLogin()">登录</button></div="doLogin()">登录</button></div>
- >
-  </div>
-</ </div>
 </div>
 
-div>
-
-<div id<div id="registerModal" class="="registerModal" class="modal-overlay"modal-overlay" style=" style="display:ndisplay:none">
-one">
-   <div class="modal-box <div class="modal-box"><h3"><h3>>📝 📝 注册</注册</h3h3>
-   >
-    <input type <input type="="text"text" id=" id="regUserregUser" placeholder" placeholder="用户名" aut="用户名" autocomplete="off">
-   ocomplete="off">
-    <input type="password" id <input type="password" id="reg="regPass" placeholder="密码"Pass" placeholder="密码" autocomplete autocomplete="off">
-   ="off">
-    <div class=" <div class="btn-groupbtn-group"><button class="btn-secondary" onclick"><button class="btn-secondary" onclick="back="backToWelcomeToWelcome()">()">返回</button><button class返回</button><button class="btn="btn-primary" onclick="doRegister-primary" onclick="doRegister()">()">注册</注册</button></div>
-button></  </div>
+<!-- 登录弹窗 -->
+<div id="loginModal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <h3>🔑 登录</h3>
+    <input type="text" id="loginUser" placeholder="用户名" autocomplete="off">
+    <input type="password" id="loginPass" placeholder="密码" autocomplete="off">
+    <div class="btn-group">
+      <button class="btn-secondary" onclick="backToWelcome()">返回</button>
+      <button class="btn-primary" onclick="doLogin()">登录</button>
+    </div>
   </div>
-div>
-</div</div>
-
-<div>
-
-<div id=" id="adminModaladminModal" class" class="modal="modal-overlay" style-overlay" style="display:none="display:none">
- ">
-  <div class=" <div class="modal-box"><hmodal-box"><h3>3>🔐🔐 管理员验证</ 管理员验证</h3>
-   h3>
-    <input <input type="password" type="password" id="adminPass id="adminPass" placeholder="管理员密码"" placeholder="管理员密码" autocomplete="off">
-    autocomplete="off">
-    < <div class="btn-group"><buttondiv class="btn-group"><button class="btn-secondary class="btn-secondary" onclick" onclick="document="document.getElementById('.getElementById('adminModaladminModal').style').style.display='none'">取消.display='none'">取消</button</button><button><button class=" class="btn-warning"btn-warning" onclick=" onclick="verifyAdmin()">验证</verifyAdmin()">验证</button></button></div>
-div>
-  </div>
-</div  </div>
 </div>
 
-<div>
-
-<div id="logModal id="" class="loglogModal" class="log-modal"-modal" style="display:n style="display:none">
-one">
-  <div class  <div class="log-box="log-box"><h3"><h3>>📋 📋 运行日志</h运行日志</h3><div id3><div id="log="logContent">Content">暂无日志暂无日志</div</div><br><button><br><button class=" class="sidebar-btnsidebar-btn" onclick="clear" onclick="clearLog()">清Log()">清空日志空日志</button</button><button class="><button class="sidebar-btnsidebar-btn" style="margin" style="margin-top:4px-top:4px" onclick" onclick="document="document.getElementById('logModal.getElementById('logModal').style').style.display='none'.display='none'">关闭</button">关闭</button></div>
+<!-- 注册弹窗 -->
+<div id="registerModal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <h3>📝 注册</h3>
+    <input type="text" id="regUser" placeholder="用户名" autocomplete="off">
+    <input type="password" id="regPass" placeholder="密码" autocomplete="off">
+    <div class="btn-group">
+      <button class="btn-secondary" onclick="backToWelcome()">返回</button>
+      <button class="btn-primary" onclick="doRegister()">注册</button>
+    </div>
+  </div>
 </div>
 
-></div>
+<!-- 管理员弹窗 -->
+<div id="adminModal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <h3>🔐 管理员验证</h3>
+    <input type="password" id="adminPass" placeholder="管理员密码" autocomplete="off">
+    <div class="btn-group">
+      <button class="btn-secondary" onclick="document.getElementById('adminModal').style.display='none'">取消</button>
+      <button class="btn-warning" onclick="verifyAdmin()">验证</button>
+    </div>
+  </div>
+</div>
+
+<!-- 日志弹窗 -->
+<div id="logModal" class="log-modal" style="display:none">
+  <div class="log-box">
+    <h3>📋 运行日志</h3>
+    <div id="logContent">暂无日志</div>
+    <br>
+    <button class="sidebar-btn" onclick="clearLog()">清空日志</button>
+    <button class="sidebar-btn" style="margin-top:4px" onclick="document.getElementById('logModal').style.display='none'">关闭</button>
+  </div>
 </div>
 
 <script>
-<script>
-var SUPvar SUPABASE_URLABASE_URL='https://pqllfl='https://pqllflxrvdwxrvdwjnoxspjnoxspddmn.supabase.comn.supabase.co';
-var SUPABASE';
-var_KEY='sb_p SUPABASE_KEY='sb_publishableublishable_PH_PHwu9kUiwu9kUiYMtPKGRYMtPKGRXdE3LjXdE3Ljg_g_7J7J0ps_';
-0ps_';
-var ADMIN_HASH='0var ADMIN_HASH='0cd875127059cd875127059c80ae574c80ae5744c4c59a4e118359a4e1183a123f4a123f4f9deaf9dea543543f9391bcf9391bcff931ff9317f0b7f0b4f6';
-4f6';
-var currentvar currentUser='User='';var';var pollingTimer pollingTimer=null=null;var;var logs= logs=[];var theme[];var theme='dark';var attachFile=null='dark';var attachFile=null;
-var;
-var loadedIds loadedIds={};
-var headers={'ap={};
-var headers={'apikey':SUikey':SUPABASE_KEY,'PABASE_KEY,'Authorization':'Authorization':'Bearer '+Bearer '+SUPSUPABASE_KEY,'Content-Type':'ABASE_KEY,'Content-Type':'application/jsonapplication/json','Pre','Prefer':'return=fer':'return=representation'representation'};
+var SUPABASE_URL='https://pqllflxrvdwjnoxspdmn.supabase.co';
+var SUPABASE_KEY='sb_publishable_PHwu9kUiYMtPKGRXdE3Ljg_7J0ps_';
+var ADMIN_HASH='0cd875127059c80ae5744c59a4e1183a123f4f9dea543f9391bcff9317f0b4f6';
+var currentUser='';var pollingTimer=null;var logs=[];var theme='dark';
+var loadedIds={};
 
-function};
+function addLog(m){var t=new Date().toLocaleTimeString();logs.push('['+t+'] '+m);console.log(m);if(logs.length>200)logs.shift()}
+function showToast(m){var d=document.createElement('div');d.className='toast';d.textContent=m;document.body.appendChild(d);setTimeout(function(){d.remove()},2000)}
+function backToWelcome(){document.getElementById('loginModal').style.display='none';document.getElementById('registerModal').style.display='none';document.getElementById('welcomeModal').style.display='flex'}
 
-function addLog(m){var t addLog(m){var t=new Date=new Date().to().toLocaleTimeString();logs.pushLocaleTimeString();logs.push('['+t('['+t+'] '+m+'] '+m);console.log(m);console.log(m);if);if(logs(logs.length>200).length>200)logs.shift()}
-functionlogs.shift()}
-function showToast showToast(m){var d(m){var d=document=document.createElement('.createElement('div');d.classdiv');d.className='toastName='toast';d.textContent';d.textContent=m;document.body.appendChild(d=m;document.body.appendChild(d);set);setTimeout(functionTimeout(function(){d.remove()(){d.remove()},200},2000)}
-0)}
-function backfunction backToWelcomeToWelcome(){document(){document.getElementById('loginModal').style.display='.getElementById('loginModalnone';document.getElementById').style.display='none';document.getElementById('register('registerModal').style.display='noneModal').style.display='none';document.getElementById('';document.getElementById('welcomewelcomeModal').style.displayModal').style.display='flex='flex'}
-
-'}
-
-async function supabaseQuery(table,methodasync function supabaseQuery(table,method,body,params,body,params){
- ){
-  var url var url=SUPABASE=SUPABASE_URL+'/rest/v1_URL+'/rest/v1/'+table;
-  if/'+table;
-  if(params)(params)url+='?'url+='?'+params+params;
-  var opts;
-  var opts={={method:method||'GETmethod:method||'GET',headers:{'ap',headers:{'apikeyikey':SUPABASE_KEY,'':SUPABASEAuthorization':'_KEY,'Bearer '+SUPAuthorization':'Bearer '+SUPABASE_KEY,'ContentABASE_KEY,'Content-Type':'-Type':'application/jsonapplication/json','Prefer':'return=representation'','Prefer':'return=representation'}};
-}};
-  if  if(body)opts(body)opts.body=.body=JSON.stringifyJSON.stringify(body);
-  addLog('(body);
-  addLog('请求: '+method请求: '+method+' '++' '+url);
- url);
-  try{ try{var rvar r=await fetch(url=await fetch(url,opts);var txt=await r.text,opts);var txt=await r();if(!r.ok){.text();if(!raddLog('DB.ok){addLog('DB错误: HTTP '+r错误: HTTP '+r.status+'.status+' '+txt '+txt.substring(.substring(0,0,100));return null100));return null}addLog('}addLog('响应: '+txt.substring(响应: '+txt.substring(0,0,100));return txt100));return txt?JSON.parse(txt):null}?JSON.parse(txt):null}catch(e){addcatch(e){addLog('DB异常Log('DB异常: '+e.message);return: '+e.message null}
-);return null}
+async function supabaseQuery(table,method,body,params){
+  var url=SUPABASE_URL+'/rest/v1/'+table;
+  if(params)url+='?'+params;
+  var opts={method:method||'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation'}};
+  if(body)opts.body=JSON.stringify(body);
+  addLog(method+' '+url);
+  try{var r=await fetch(url,opts);var txt=await r.text();if(!r.ok){addLog('HTTP '+r.status+': '+txt.substring(0,100));return null}addLog('OK: '+txt.substring(0,80));return txt?JSON.parse(txt):null}catch(e){addLog('网络错误: '+e.message);return null}
 }
 
-function showLog(){document.getElementById('logModal}
+function showLog(){document.getElementById('logModal').style.display='flex';renderLog()}
+function renderLog(){document.getElementById('logContent').innerHTML=logs.length?logs.join('<br>'):'暂无日志'}
+function clearLog(){logs=[];renderLog();addLog('日志已清空')}
+document.addEventListener('click',function(e){if(e.target.id==='logModal')document.getElementById('logModal').style.display='none'});
+document.addEventListener('click',function(e){if(e.target.id==='adminModal')document.getElementById('adminModal').style.display='none'});
 
-function showLog(){document.getElementById('logModal').style.display='flex';').style.display='flex';renderLog()}
-renderLog()}
-function renderLog(){function renderLog(){document.getElementById('logContent').document.getElementById('logContent').innerHTML=logs.length?logs.joininnerHTML=logs.length?logs.join('<br('<br>'):>'):'暂无日志'}
-'暂无日志'}
-function clearLog(){function clearLog(){logs=[];renderLoglogs=[];renderLog();addLog('();addLog('日志已清空')}
-日志已清空')}
-document.addEventListenerdocument.addEventListener('click',function('click',function(e){(e){if(eif(e.target.id==='logModal.target.id==='logModal')document.getElementById('logModal')document.getElementById('logModal').style.display='').style.display='none'none'});
-document.addEventListener('});
-document.addEventListener('click',function(eclick',function(e){if(e.target.id==='admin){if(e.target.id==Modal')document.getElementById='adminModal')document.getElementById('admin('adminModal').style.display='noneModal').style.display='none'});
+function toggleTheme(){if(theme==='dark'){document.body.classList.add('light');theme='light';document.getElementById('themeBtn').textContent='☀️ 白天模式'}else{document.body.classList.remove('light');theme='dark';document.getElementById('themeBtn').textContent='🌙 夜间模式'}localStorage.setItem('chat_theme',theme)}
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebarOverlay').classList.add('show')}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('show')}
 
-function toggle'});
-
-Theme(){function toggleTheme(){if(theme==='dark'){if(theme==='dark'){document.body.classList.add('lightdocument.body.classList.add('light');theme='light');theme='light';document';document.getElementById('themeBtn').textContent='☀.getElementById('themeBtn').textContent='☀️ 白天模式'}else️ 白天模式'}else{document.body{document.body.classList.remove.classList.remove('light');theme('light');theme='dark';document.getElementById('='dark';document.getElementById('themeBtn').textthemeBtn').textContent='Content='🌙 夜间🌙 夜间模式'}localStorage模式'}localStorage.setItem('chat.setItem('chat_theme',theme)}
-function_theme',theme)}
-function openSidebar(){ openSidebar(){document.getElementById('sidebardocument.getElementById('sidebar').class').classList.add('openList.add('open');document.getElementById('');document.getElementById('sidebarOverlay').sidebarOverlay').classList.add('classList.add('show')show')}
-function closeSidebar(){document.getElementById('sidebar}
-function closeSidebar(){document.getElementById('sidebar').classList.remove('open').classList.remove('open');document.getElementById('sidebarOver');document.getElementById('sidebarOverlay').classListlay').classList.remove('show')}
-
-function.remove('show')}
-
-function showLogin showLoginModal(){document.getElementById('welcomeModal').styleModal(){document.getElementById('welcomeModal').style.display='.display='none';document.getElementById('loginnone';document.getElementById('loginModal').style.displayModal').style.display='flex';document='flex';document.getElementById('.getElementById('loginUser').valueloginUser').value='';document.getElementById='';document.getElementById('loginPass').('loginPass').value=''}
-function showRegistervalue=''}
-function showRegisterModal(){Modal(){document.getElementById('welcomeModal').styledocument.getElementById('welcomeModal').style.display='.display='none';document.getElementByIdnone';document.getElementById('register('registerModal').Modal').style.display='flex';documentstyle.display='flex';document.getElementById('regUser').value.getElementById('regUser').value='';document.getElementById='';document.getElementById('regPass').('regPass').value=''}
-
-value=''}
+function showLoginModal(){document.getElementById('welcomeModal').style.display='none';document.getElementById('loginModal').style.display='flex';document.getElementById('loginUser').value='';document.getElementById('loginPass').value=''}
+function showRegisterModal(){document.getElementById('welcomeModal').style.display='none';document.getElementById('registerModal').style.display='flex';document.getElementById('regUser').value='';document.getElementById('regPass').value=''}
 
 async function doLogin(){
- async function doLogin(){
-  var u=document.getElementById(' var u=documentloginUser.getElementById('loginUser').value.trim();var p=document').value.trim();var p=document.getElementById('loginPass').value.getElementById('loginPass').value;
-  if(!;
-  if(!u||!p){showu||!p){showToast('请填写完整');return}
-Toast('请填写完整');return}
-  var users=  var users=await supabaseQuery('usersawait supabaseQuery','GET',null,'username('users','GET',null,'username=eq.'+=eq.'+encodeURIencodeURIComponent(u)+'Component(u)+'&limit=1');
- &limit=1');
-  if(!users|| if(!users||users.lengthusers.length===0){show===0){showToast('Toast('用户不存在');return}
- 用户不存在');return}
-  if(users if(users[0].password!==p[0].password!==p){show){showToast('密码错误');returnToast('密码错误');return}
-  if(!}
-  if(!usersusers[0].approved){showToast[0].approved){showToast('账户('账户待审核');return}
- 待审核');return}
-  currentUser=u;localStorage.set currentUser=u;localItem('Storage.setItem('chat_user',u);
-  document.getElementByIdchat_user',u);
-  document.getElementById('loginModal').style.display('loginModal').='none';document.getElementById('style.display='none';document.getElementById('welcomewelcomeModal').style.display='none';
- Modal').style.display='none';
-  document.getElementById('main document.getElementById('mainApp').style.displayApp').style.display='flex';
- ='flex';
-  loadedIds={}; loadedIds={};document.getElementById('chatArea').document.getElementById('chatinnerHTML='';
-  addArea').innerHTML='';
-  addLog('登录成功Log('登录成功: '+u);loadMessages: '+u);();pollloadMessages();pollingTimer=setInterval(ingTimer=setInterval(loadMessages,2000)
-loadMessages,2000)
+  var u=document.getElementById('loginUser').value.trim();var p=document.getElementById('loginPass').value;
+  if(!u||!p){showToast('请填写完整');return}
+  var users=await supabaseQuery('users','GET',null,'username=eq.'+encodeURIComponent(u)+'&limit=1');
+  if(!users||users.length===0){showToast('用户不存在');return}
+  if(users[0].password!==p){showToast('密码错误');return}
+  if(!users[0].approved){showToast('账户待审核');return}
+  currentUser=u;localStorage.setItem('chat_user',u);
+  document.getElementById('loginModal').style.display='none';document.getElementById('welcomeModal').style.display='none';
+  document.getElementById('mainApp').style.display='flex';
+  loadedIds={};document.getElementById('chatArea').innerHTML='';
+  addLog('登录成功: '+u);loadMessages();pollingTimer=setInterval(loadMessages,2000)
 }
-
-async}
 
 async function doRegister(){
- function doRegister(){
-  var u=  var u=document.getElementById('regUser').document.getElementById('regUser').value.trimvalue.trim();var();var p= p=document.getElementByIddocument.getElementById('regPass').('regPass').value;
-value;
-  if  if(!u(!u||!p){showToast('请||!p){showToast('请填写完整填写完整');return');return}
- }
-  var check=await var check=await supabaseQuery(' supabaseQuery('users','GET',users','null,'GET',null,'username=username=eq.'eq.'+encode+encodeURIComponentURIComponent(u)+'&limit=(u)+'&limit=1');
-  if(check&&check.length>0){show1');
-  if(check&&check.length>0){showToast('用户名已Toast('用户名已存在');存在');return}
-  addreturn}
-  addLog('准备注册:Log('准备注册: '+u);
-  var r '+u);
-  var r=await supabaseQuery('=await supabaseQuery('users','users','POST',{usernamePOST',{username:u,password:u,password:p,:p,approved:false});
-approved:false});
-  if  if(r){
-    if(r){
-    if(Array.isArray(r)(Array.isArray(r)&&r&&r.length>0){.length>0){showToast('注册成功！showToast('注册成功！等待管理员审核');等待管理员审核');backToWelcome();addLogbackToWelcome();addLog('注册成功:('注册成功: '+u)}
-    else if '+u)}
-    else if(r.username(r.username){showToast('注册成功！等待){showToast('注册成功！等待管理员审核管理员审核');back');backToWelcome();addLog('ToWelcome();addLog('注册成功: '+注册成功: '+u)}
-    else{showu)}
-    else{showToast('注册失败，查看Toast('注册失败，查看日志')}
- 日志')}
-  }else{showToast(' }else{showToast('注册失败注册失败，查看日志')}
+  var u=document.getElementById('regUser').value.trim();var p=document.getElementById('regPass').value;
+  if(!u||!p){showToast('请填写完整');return}
+  var check=await supabaseQuery('users','GET',null,'username=eq.'+encodeURIComponent(u)+'&limit=1');
+  if(check&&check.length>0){showToast('用户名已存在');return}
+  var r=await supabaseQuery('users','POST',{username:u,password:p,approved:false});
+  if(r){
+    if(Array.isArray(r)&&r.length>0){showToast('注册成功！等待管理员审核');backToWelcome()}
+    else if(r.username){showToast('注册成功！等待管理员审核');backToWelcome()}
+    else{showToast('注册失败，查看日志')}
+  }else{showToast('注册失败，查看日志')}
 }
 
-，查看日志')}
+function logout(){
+  if(!currentUser){showToast('你还没有登录');return}
+  if(pollingTimer)clearInterval(pollingTimer);currentUser='';localStorage.removeItem('chat_user');
+  loadedIds={};document.getElementById('mainApp').style.display='none';
+  document.getElementById('welcomeModal').style.display='flex';addLog('已退出')
 }
 
-function logoutfunction logout(){
-  if(!(){
-  if(!currentUsercurrentUser){show){showToast('你还没有Toast('你还没有登录');return登录');return}
-}
-  if(pollingTimer)clearInterval(pollingTimer);currentUser='';  if(pollingTimer)clearInterval(pollingTimer);currentUser='';localStorage.removeItemlocalStorage.removeItem('chat('chat_user');
-  loaded_user');
-  loadedIds={};documentIds={};document.getElementById('.getElementById('mainApp').stylemainApp').style.display='none';
-  document.getElementById('.display='none';
-  document.getElementById('welcomeModal').welcomeModal').style.displaystyle.display='flex';add='flex';addLog('已退出Log('已退出')
-}
-
-function show')
-}
-
-function showAdminModal(){documentAdminModal(){document.getElementById('.getElementById('adminModal').styleadminModal').style.display='.display='flex';document.getElementById('adminPass').flex';document.getElementById('adminPass').value='value=''}
+function showAdminModal(){document.getElementById('adminModal').style.display='flex';document.getElementById('adminPass').value=''}
 async function verifyAdmin(){
-  var'}
-async function verifyAdmin(){
-  var pw=document.getElementById pw=document.getElementById('admin('adminPass').value;Pass').value;if(!if(!pw)return;
-  varpw)return;
-  var hh=await crypto.subtle hh=await crypto.subtle.digest('.digest('SHA-256',SHA-256',new TextEncoder().new TextEncoder().encode(pencode(pw)).then(function(h){return Arrayw)).then(function(h){return Array.from(new Uint.from(new Uint8Array(h)).map(function8Array(h)).map(function(b){return b.toString((b){return b.toString(16).padStart16).padStart(2(2,'0')}).,'0')}).join('join('')});
-  if(hh===AD')});
-  if(hh===ADMIN_HASH){document.getElementByIdMIN_HASH){('adminModal').document.getElementById('adminModal').style.display='nonestyle.display='none';if';if(confirm(confirm('要('要删除所有删除所有聊天记录吗？聊天记录吗？')){if(')){if(confirm('confirm('再次确认再次确认'))deleteAllMessages()}}'))deleteAllMessages()}}else{showToastelse{showToast('密码错误')('密码错误')}
+  var pw=document.getElementById('adminPass').value;if(!pw)return;
+  var hh=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw)).then(function(h){return Array.from(new Uint8Array(h)).map(function(b){return b.toString(16).padStart(2,'0')}).join('')});
+  if(hh===ADMIN_HASH){document.getElementById('adminModal').style.display='none';if(confirm('要删除所有聊天记录吗？')){if(confirm('再次确认'))deleteAllMessages()}}else{showToast('密码错误')}
 }
-}
-}
-async function deleteAllMessages(){async function deleteAllMessages(){await supabaseQueryawait supabaseQuery('messages','DELETE',null('messages','DELETE',null,'id=gt,'id=gt.0.0');loaded');loadedIds={Ids={};document};document.getElementById('chatArea').inner.getElementById('chatAreaHTML='';show').innerHTML='Toast('';showToast('聊天记录已清聊天记录已清空');addLog空');addLog('聊天记录已清空('聊天记录已清空')}
-
-async function')}
+async function deleteAllMessages(){await supabaseQuery('messages','DELETE',null,'id=gt.0');loadedIds={};document.getElementById('chatArea').innerHTML='';showToast('聊天记录已清空')}
 
 async function sendMessage(){
-  sendMessage(){
-  if(! if(!currentUser){showcurrentUser){showToast('请Toast('请先先登录');return}
-  var登录');return}
- msg=  var msg=document.getElementById('msgdocument.getElementById('msgInput').value.trimInput').value.trim();
-  if(!();
-  if(!msg&&!attachmsg&&File){!attachFile){return}
-return}
-  var safe  var safeMsgMsg=msg||'(=msg||'(附件)';
- 附件) var r';
-  var r=await=await supabaseQuery(' supabaseQuery('messages','messages','POST',POST',{username:current{username:currentUser,content:sUser,content:safeMsgafeMsg});
- });
-  if if(r&&r(r&&r.length>0){document.getElementById.length>0){('msgdocument.getElementById('msgInput').Input').value='';attachFile=null;loadedIdsvalue='';attachFile=null;loadedIds[r[0].[r[0].id]=id]=true;true;addMsgaddMsgToChat(rToChat[0])(r[0])}else}else{showToast('发送失败{showToast('发送失败')}
-}
-document')}
-}
-document.getElementById('.getElementById('attachInput').addEventListener('attachInput').addEventListener('change',function(echange',function(e){if){if(e(e.target.files.length>.target.files.length>0){attachFile0){=e.targetattachFile=e.target.files.files[0];show[0];showToast('Toast('已选: '+已选: '+attachFile.name)attachFile.name)}});
-
-function add}});
-
-function addMsgToChat(msgMsgToChat(msg){
- ){
-  var area var area=document=document.getElementById('.getElementById('chatAreachatArea');
- ');
-  var row var row=document.createElement('=document.createElement('div');div');row.className='row.className='msg-row';ifmsg-row';if(msg.username(msg.username===current===currentUser)User)row.classList.add('mine');
-  varrow.classList.add('mine');
-  var meta=document.createElement meta=document.createElement('div('div');meta.className='msg-meta';
-  var d=new Date');meta.className='msg-meta';
-  var d=new Date(msg.created(msg.created_at);_at);var ts=d.getFullYearvar ts=d.get()+'-'+StringFullYear(d.getMonth()+()+'-'+String(d.getMonth()+1).1).padStart(2,'0padStart(2,'0')+')+'-'+String(d'-'+String(d.getDate()).padStart(2,'.getDate()).padStart(2,'0')0')+'_'+String+'_'+String(d.getHours()).padStart(d.getHours()).padStart(2,'0')+(2,'0')+'-'+String(d.getMinutes'-'+String(d()).padStart(.getMinutes()).padStart(2,'2,'0')+'-0')'+String(d.get+'-'+String(d.getSeconds()).padStartSeconds()).padStart(2(2,'0');
- ,'0');
-  meta.innerHTML=' meta.innerHTML='<span class="user-tag<span class="user-tag">'+msg.username+'</">'+msg.username+'</span> <spanspan> <span>'+ts+'</>'+ts+'</spanspan>';
-  var bb=document.createElement('>';
-  var bb=documentdiv');bb.class.createElement('div');bb.className='Name='msg-bubble';msg-bubble';bb.textbb.textContent=Content=msg.content;
-  row.appendChildmsg.content;
-  row.appendChild(meta(meta);row);row.appendChild(bb);
-  if(msg..appendChild(bb);
-  if(msg.attachment_url){var ad=attachment_url){var ad=document.createElement('divdocument.createElement('div');ad.className');ad.className='msg='msg-attachment';var-attachment';var ext=(msg.attachment_name||'').split ext=(msg.attachment_name||'').split('.'('.').pop().to).popLowerCase();if(['().toLowerCase();if(['jpg','jpegjpg','jpeg','png','g','png','gif','bmp','webp','if','bmp','webp','svg'].svg'].indexOf(ext)>=indexOf(ext)>=0){var img=document0){var img=document.createElement('.createElement('img');img');img.src=msgimg.src=msg.attachment_url;.attachment_url;img.onclick=img.onclick=function(){window.openfunction(){window.open(this.src)};(this.src)};ad.appendChildad.appendChild(img)}(img)}else{var a=document.createElement('a');a.helse{var a=document.createElement('a');a.href=msg.ref=msg.attachment_urlattachment_url;a.textContent='📎;a.textContent='📎 '+msg.attachment_name;a '+msg.attachment_name;a.download=msg.download=msg.attachment_name;a.attachment_name;a.target='_blank.target='_blank';ad';ad.appendChild(a.appendChild(a)}bb.appendChild(ad)}
-  area)}bb.appendChild(ad)}
-  area.appendChild(row);area.appendChild(row);area.scrollTop=area.scrollHeight.scrollTop=area.scrollHeight;
+  if(!currentUser){showToast('请先登录');return}
+  var msg=document.getElementById('msgInput').value.trim();
+  if(!msg){return}
+  var r=await supabaseQuery('messages','POST',{username:currentUser,content:msg});
+  if(r&&r.length>0){document.getElementById('msgInput').value='';loadedIds[r[0].id]=true;addMsgToChat(r[0])}else{showToast('发送失败')}
 }
 
-async function;
+function addMsgToChat(msg){
+  var area=document.getElementById('chatArea');
+  var row=document.createElement('div');row.className='msg-row';if(msg.username===currentUser)row.classList.add('mine');
+  var meta=document.createElement('div');meta.className='msg-meta';
+  var d=new Date(msg.created_at);var ts=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+'-'+String(d.getMinutes()).padStart(2,'0');
+  meta.innerHTML='<span class="user-tag">'+msg.username+'</span> <span>'+ts+'</span>';
+  var bb=document.createElement('div');bb.className='msg-bubble';bb.textContent=msg.content;
+  row.appendChild(meta);row.appendChild(bb);area.appendChild(row);area.scrollTop=area.scrollHeight;
 }
 
 async function loadMessages(){
-  loadMessages(){
-  if(!currentUser if(!currentUser)return;
-  var ms)return;
-  var msgs=await supgs=await supabaseQuery('messagesabaseQuery('messages','GET',null,'order','GET',null=created_at.asc&,'order=created_at.asc&limit=100');
-limit=100');
-  if  if(!msgs||(!msgs||!Array.isArray!Array.isArray(msgs))return;
-(msgs))return;
-  for(var i  for(var i=0=0;i<msgs.length;i;i<msgs.length;i++){if(!loadedIds++){if(!loadedIds[ms[msgs[i].idgs[i].id]){]){loadedIdsloadedIds[msgs[i].id[msgs[i].id]=true;add]=true;addMsgToChat(MsgToChat(msgs[i])}}
+  if(!currentUser)return;
+  var msgs=await supabaseQuery('messages','GET',null,'order=created_at.asc&limit=100');
+  if(!msgs||!Array.isArray(msgs))return;
+  for(var i=0;i<msgs.length;i++){if(!loadedIds[msgs[i].id]){loadedIds[msgs[i].id]=true;addMsgToChat(msgs[i])}}
 }
 
-msgs[i])}}
-}
-
-document.addEventListenerdocument.addEventListener('DOMContentLoaded('DOMContentLoaded',async function(){
-',async function(){
-  var  var st=localStorage.getItem(' st=localStorage.getItem('chat_theme')||'chat_theme')||'dark';theme=dark';theme=st;st;if(theme==='lightif(theme==='light'){document.body.classList.add('light'){document.body.classList.add('light');document');document.getElementById('.getElementById('themeBtn').textthemeBtn').textContent='☀Content='☀️ 白天模式'}
- ️ 白天模式'}
-  var su var su=local=localStorage.getItemStorage.getItem('chat_user');
-('chat_user');
-  if(su  if){document.getElementById('welcome(su){document.getElementById('Modal').welcomeModal').style.display='nonestyle.display='none';
-    var users=await';
-    var users=await supabaseQuery('users',' supabaseQuery('GET',users','GET',null,'username=eq.'null,'username=eq.'+encode+encodeURIComponent(su)+'URIComponent(su&limit)+'&limit=1');
-   =1');
-    if(users&&users.length if(users&&users.length>0&&users[0>0&&users].approved){current[0].approved){currentUser=su;User=su;document.getElementByIddocument.getElementById('mainApp').('mainApp').style.display='flex';loadedstyle.display='flexIds={};load';loadedIds={};loadMessages();Messages();pollingpollingTimer=setInterval(loadMessages,Timer=setInterval(loadMessages,20002000);add);addLog('自动登录: '+Log('自动登录: '+su)}else{su)}else{localStorage.removeItemlocalStorage.removeItem('chat_user');('chat_user');document.getElementById('wdocument.getElementById('welcomeModal').styleelcomeModal').style.display='flex'}
-.display='flex'}
-  }  }else{documentelse{document.getElementById('.getElementById('welcomeModal').welcomeModal').style.displaystyle.display='flex'}
-  addLog('聊天室就='flex'}
-  addLog('聊天室就绪（绪（Supabase版）Supabase版）')
-});
-</script>
-</')
+document.addEventListener('DOMContentLoaded',async function(){
+  var st=localStorage.getItem('chat_theme')||'dark';theme=st;if(theme==='light'){document.body.classList.add('light');document.getElementById('themeBtn').textContent='☀️ 白天模式'}
+  var su=localStorage.getItem('chat_user');
+  if(su){document.getElementById('welcomeModal').style.display='none';
+    var users=await supabaseQuery('users','GET',null,'username=eq.'+encodeURIComponent(su)+'&limit=1');
+    if(users&&users.length>0&&users[0].approved){currentUser=su;document.getElementById('mainApp').style.display='flex';loadedIds={};loadMessages();pollingTimer=setInterval(loadMessages,2000);addLog('自动登录: '+su)}else{localStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex'}
+  }else{document.getElementById('welcomeModal').style.display='flex'}
+  addLog('准备就绪')
 });
 </script>
 </body>
-</htmlbody>
 </html>
