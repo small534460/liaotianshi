@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Small 3 的聊天室</title>
   <style>
-    :root{--bg:#1a1a2e;--text:#e0e0e0;--accent:#60a5fa;--accent2:#3b82f6;--my-msg:#1a3a2a;--other-msg:#16213e;--input-bg:#0f1724;--sidebar-bg:rgba(0,0,0,0.8);--border:rgba(255,255,255,0.1);--radius:12px;}
-    body.light{--bg:#f0f0f0;--text:#333;--my-msg:#e3f2fd;--other-msg:#ffffff;--input-bg:#e8e8e8;--sidebar-bg:rgba(255,255,255,0.9);--border:rgba(0,0,0,0.1);}
+    :root{--bg:#1a1a2e;--text:#e0e0e0;--accent:#60a5fa;--accent2:#3b82f6;--my-msg:#1a3a2a;--other-msg:#16213e;--input-bg:#0f1724;--sidebar-bg:rgba(0,0,0,0.8);--border:rgba(255,255,255,0.1);--radius:12px;--green:#10B981;--red:#EF4444;--gold:#f59e0b;}
+    body.light{--bg:#f0f0f0;--text:#333;--my-msg:#e3f2fd;--other-msg:#ffffff;--input-bg:#e8e8e8;--sidebar-bg:rgba(255,255,255,0.95);--border:rgba(0,0,0,0.1);}
     *{box-sizing:border-box;margin:0;padding:0}
     body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;height:100vh;display:flex;overflow:hidden;transition:all .3s}
     
@@ -34,9 +34,6 @@
     .msg-meta .user-tag{background:var(--accent);color:#fff;padding:1px 8px;border-radius:8px;font-size:10px;font-weight:600}
     .msg-bubble{background:var(--other-msg);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;word-break:break-word;line-height:1.5;font-size:14px;max-width:80%}
     .msg-row.mine .msg-bubble{background:var(--my-msg);border-color:rgba(96,165,250,0.3)}
-    .msg-attachment{margin-top:6px}
-    .msg-attachment img{max-width:180px;max-height:180px;border-radius:8px;cursor:pointer}
-    .msg-attachment a{color:var(--accent);font-size:12px;text-decoration:none}
     
     .input-area{display:flex;gap:8px;padding:12px 16px;background:var(--bg);border-top:1px solid var(--border)}
     .input-area textarea{flex:1;padding:10px 14px;border-radius:20px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;resize:none;outline:none;max-height:100px;font-family:inherit;line-height:1.4}
@@ -53,11 +50,6 @@
     .modal-box .btn-group button{flex:1;padding:10px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer}
     .btn-primary{background:var(--accent);color:#fff}
     .btn-secondary{background:rgba(96,165,250,0.2);color:var(--text);border:1px solid var(--border)}
-    .btn-warning{background:#f59e0b;color:#fff}
-    
-    .log-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1100;display:flex;align-items:center;justify-content:center}
-    .log-box{background:var(--sidebar-bg);backdrop-filter:blur(15px);border-radius:16px;padding:20px;border:1px solid var(--border);max-width:500px;width:90%;max-height:60vh;overflow-y:auto;font-family:monospace;font-size:12px;color:var(--text);line-height:1.6}
-    .log-box h3{color:var(--accent);margin-bottom:10px}
     
     .welcome-btns{display:flex;gap:16px;justify-content:center;margin-top:20px}
     .welcome-btns button{padding:14px 32px;border-radius:12px;font-size:18px;font-weight:600;cursor:pointer;border:none;color:#fff;min-width:120px}
@@ -67,6 +59,35 @@
     
     .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.9);color:#fff;padding:10px 24px;border-radius:20px;font-size:14px;z-index:2000;animation:fadeOut 2s ease forwards;pointer-events:none}
     @keyframes fadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}
+
+    /* 管理员面板 */
+    .admin-panel-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:500;display:none;align-items:center;justify-content:center}
+    .admin-panel{background:var(--sidebar-bg);backdrop-filter:blur(20px);border-radius:16px;padding:24px;border:1px solid var(--border);max-width:600px;width:90%;max-height:80vh;overflow-y:auto}
+    .admin-panel h3{font-size:20px;color:var(--accent);margin-bottom:20px;text-align:center}
+    .admin-section{margin-bottom:20px;padding:16px;background:rgba(0,0,0,0.2);border-radius:10px;border:1px solid var(--border)}
+    .admin-section h4{font-size:15px;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    .user-list-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;margin:4px 0;background:rgba(0,0,0,0.2);border-radius:8px;font-size:13px}
+    .user-list-item .user-info{display:flex;align-items:center;gap:8px}
+    .user-list-item .badge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+    .badge.approved{background:rgba(16,185,129,0.2);color:var(--green)}
+    .badge.pending{background:rgba(245,158,11,0.2);color:var(--gold)}
+    .user-actions{display:flex;gap:6px}
+    .btn-sm{padding:4px 10px;border-radius:6px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-sm.green{background:var(--green);color:#fff}
+    .btn-sm.red{background:var(--red);color:#fff}
+    .btn-sm.gray{background:rgba(255,255,255,0.2);color:var(--text);border:1px solid var(--border)}
+    .btn-sm:hover{transform:translateY(-1px)}
+    
+    .delete-msg-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+    .delete-msg-row input{width:60px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:13px;outline:none;text-align:center}
+    .delete-msg-row input:focus{border-color:var(--accent)}
+    .delete-msg-row span{font-size:13px;opacity:0.7}
+
+    .log-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1100;display:flex;align-items:center;justify-content:center}
+    .log-box{background:var(--sidebar-bg);backdrop-filter:blur(15px);border-radius:16px;padding:20px;border:1px solid var(--border);max-width:500px;width:90%;max-height:60vh;overflow-y:auto;font-family:monospace;font-size:12px;color:var(--text);line-height:1.6}
+    .log-box h3{color:var(--accent);margin-bottom:10px}
+    
+    @media(max-width:600px){.admin-panel{max-width:95vw;padding:16px}.user-list-item{flex-direction:column;align-items:flex-start;gap:6px}}
   </style>
 </head>
 <body>
@@ -79,7 +100,7 @@
     <img src="https://i.mituw.com/imgs/2026/03/15/de4945abb96be550.jpg" alt="头像">
     <h3>Small 3 的聊天室</h3>
   </div>
-  <button class="sidebar-btn" onclick="showAdminModal()">🔐 管理员模式</button>
+  <button class="sidebar-btn" onclick="showAdminAuth()">🔐 管理员模式</button>
   <button class="sidebar-btn" onclick="toggleTheme()" id="themeBtn">🌙 夜间模式</button>
   <button class="sidebar-btn" onclick="showLog()">📋 运行日志</button>
   <button class="sidebar-btn danger" onclick="logout()">🚪 退出登录</button>
@@ -139,14 +160,46 @@
   </div>
 </div>
 
-<!-- 管理员弹窗 -->
-<div id="adminModal" class="modal-overlay" style="display:none">
+<!-- 管理员验证弹窗 -->
+<div id="adminAuthModal" class="modal-overlay" style="display:none">
   <div class="modal-box">
     <h3>🔐 管理员验证</h3>
     <input type="password" id="adminPass" placeholder="管理员密码" autocomplete="off">
     <div class="btn-group">
-      <button class="btn-secondary" onclick="document.getElementById('adminModal').style.display='none'">取消</button>
-      <button class="btn-warning" onclick="verifyAdmin()">验证</button>
+      <button class="btn-secondary" onclick="document.getElementById('adminAuthModal').style.display='none'">取消</button>
+      <button class="btn-primary" onclick="verifyAdmin()">验证</button>
+    </div>
+  </div>
+</div>
+
+<!-- 管理员面板 -->
+<div id="adminPanelOverlay" class="admin-panel-overlay" onclick="if(event.target===this)document.getElementById('adminPanelOverlay').style.display='none'">
+  <div class="admin-panel" id="adminPanel">
+    <h3>🔐 管理员面板</h3>
+    
+    <!-- 用户管理 -->
+    <div class="admin-section">
+      <h4>👥 用户管理</h4>
+      <div id="userList" style="max-height:200px;overflow-y:auto">加载中...</div>
+      <button class="btn-sm gray" onclick="loadUserList()" style="margin-top:8px">🔄 刷新用户列表</button>
+    </div>
+    
+    <!-- 删除聊天记录 -->
+    <div class="admin-section">
+      <h4>🗑️ 删除聊天记录</h4>
+      <div class="delete-msg-row">
+        <span>删除最近</span>
+        <input type="number" id="deleteMsgCount" value="10" min="1" max="1000">
+        <span>条消息</span>
+        <button class="btn-sm red" onclick="deleteRecentMessages()">执行删除</button>
+      </div>
+      <div style="margin-top:8px">
+        <button class="btn-sm red" onclick="if(confirm('确定删除所有聊天记录？此操作不可恢复！'))deleteAllMessages()">⚠️ 删除全部记录</button>
+      </div>
+    </div>
+    
+    <div style="text-align:center;margin-top:16px">
+      <button class="btn-sm gray" onclick="document.getElementById('adminPanelOverlay').style.display='none'">关闭面板</button>
     </div>
   </div>
 </div>
@@ -178,15 +231,13 @@ async function supabaseQuery(table,method,body,params){
   if(params)url+='?'+params;
   var opts={method:method||'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation'}};
   if(body)opts.body=JSON.stringify(body);
-  addLog(method+' '+url);
-  try{var r=await fetch(url,opts);var txt=await r.text();if(!r.ok){addLog('HTTP '+r.status+': '+txt.substring(0,100));return null}addLog('OK: '+txt.substring(0,80));return txt?JSON.parse(txt):null}catch(e){addLog('网络错误: '+e.message);return null}
+  try{var r=await fetch(url,opts);var txt=await r.text();if(!r.ok){addLog('HTTP '+r.status+': '+txt.substring(0,80));return null}return txt?JSON.parse(txt):null}catch(e){addLog('网络错误: '+e.message);return null}
 }
 
 function showLog(){document.getElementById('logModal').style.display='flex';renderLog()}
 function renderLog(){document.getElementById('logContent').innerHTML=logs.length?logs.join('<br>'):'暂无日志'}
-function clearLog(){logs=[];renderLog();addLog('日志已清空')}
+function clearLog(){logs=[];renderLog()}
 document.addEventListener('click',function(e){if(e.target.id==='logModal')document.getElementById('logModal').style.display='none'});
-document.addEventListener('click',function(e){if(e.target.id==='adminModal')document.getElementById('adminModal').style.display='none'});
 
 function toggleTheme(){if(theme==='dark'){document.body.classList.add('light');theme='light';document.getElementById('themeBtn').textContent='☀️ 白天模式'}else{document.body.classList.remove('light');theme='dark';document.getElementById('themeBtn').textContent='🌙 夜间模式'}localStorage.setItem('chat_theme',theme)}
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebarOverlay').classList.add('show')}
@@ -215,11 +266,7 @@ async function doRegister(){
   var check=await supabaseQuery('users','GET',null,'username=eq.'+encodeURIComponent(u)+'&limit=1');
   if(check&&check.length>0){showToast('用户名已存在');return}
   var r=await supabaseQuery('users','POST',{username:u,password:p,approved:false});
-  if(r){
-    if(Array.isArray(r)&&r.length>0){showToast('注册成功！等待管理员审核');backToWelcome()}
-    else if(r.username){showToast('注册成功！等待管理员审核');backToWelcome()}
-    else{showToast('注册失败，查看日志')}
-  }else{showToast('注册失败，查看日志')}
+  if(r){showToast('注册成功！等待管理员审核');backToWelcome()}else{showToast('注册失败')}
 }
 
 function logout(){
@@ -229,14 +276,64 @@ function logout(){
   document.getElementById('welcomeModal').style.display='flex';addLog('已退出')
 }
 
-function showAdminModal(){document.getElementById('adminModal').style.display='flex';document.getElementById('adminPass').value=''}
+// ═══════════ 管理员 ═══════════
+function showAdminAuth(){document.getElementById('adminAuthModal').style.display='flex';document.getElementById('adminPass').value=''}
+
 async function verifyAdmin(){
   var pw=document.getElementById('adminPass').value;if(!pw)return;
   var hh=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw)).then(function(h){return Array.from(new Uint8Array(h)).map(function(b){return b.toString(16).padStart(2,'0')}).join('')});
-  if(hh===ADMIN_HASH){document.getElementById('adminModal').style.display='none';if(confirm('要删除所有聊天记录吗？')){if(confirm('再次确认'))deleteAllMessages()}}else{showToast('密码错误')}
+  if(hh===ADMIN_HASH){
+    document.getElementById('adminAuthModal').style.display='none';
+    document.getElementById('adminPanelOverlay').style.display='flex';
+    loadUserList();
+  }else{showToast('密码错误')}
 }
-async function deleteAllMessages(){await supabaseQuery('messages','DELETE',null,'id=gt.0');loadedIds={};document.getElementById('chatArea').innerHTML='';showToast('聊天记录已清空')}
 
+// 加载用户列表
+async function loadUserList(){
+  var ul=document.getElementById('userList');
+  ul.innerHTML='加载中...';
+  var users=await supabaseQuery('users','GET',null,'order=created_at.asc');
+  if(!users||users.length===0){ul.innerHTML='<div style="opacity:0.5;text-align:center;padding:12px">暂无用户</div>';return}
+  ul.innerHTML='';
+  for(var i=0;i<users.length;i++){
+    var u=users[i];
+    var div=document.createElement('div');div.className='user-list-item';
+    div.innerHTML='<div class="user-info"><span>'+u.username+'</span><span class="badge '+(u.approved?'approved':'pending')+'">'+(u.approved?'已批准':'待审核')+'</span></div><div class="user-actions">'+
+      (!u.approved?'<button class="btn-sm green" onclick="approveUser('+u.id+')">✅ 批准</button>':'')+
+      '<button class="btn-sm red" onclick="deleteUser('+u.id+',\''+u.username+'\')">🗑️ 删除</button></div>';
+    ul.appendChild(div);
+  }
+}
+
+async function approveUser(id){
+  var r=await supabaseQuery('users','PATCH',{approved:true},'id=eq.'+id);
+  if(r){showToast('用户已批准');loadUserList()}else{showToast('操作失败')}
+}
+
+async function deleteUser(id,name){
+  if(!confirm('确定删除用户 "'+name+'" 吗？'))return;
+  var r=await supabaseQuery('users','DELETE',null,'id=eq.'+id);
+  if(r){showToast('用户已删除');loadUserList()}else{showToast('删除失败')}
+}
+
+// 删除最近N条消息
+async function deleteRecentMessages(){
+  var count=parseInt(document.getElementById('deleteMsgCount').value)||10;
+  if(!confirm('确定删除最近 '+count+' 条消息吗？'))return;
+  var msgs=await supabaseQuery('messages','GET',null,'order=created_at.desc&limit='+count);
+  if(!msgs||msgs.length===0){showToast('没有消息可删除');return}
+  for(var i=0;i<msgs.length;i++){await supabaseQuery('messages','DELETE',null,'id=eq.'+msgs[i].id)}
+  loadedIds={};document.getElementById('chatArea').innerHTML='';loadMessages();
+  showToast('已删除 '+msgs.length+' 条消息')
+}
+
+async function deleteAllMessages(){
+  await supabaseQuery('messages','DELETE',null,'id=gt.0');
+  loadedIds={};document.getElementById('chatArea').innerHTML='';showToast('聊天记录已清空')
+}
+
+// ═══════════ 消息 ═══════════
 async function sendMessage(){
   if(!currentUser){showToast('请先登录');return}
   var msg=document.getElementById('msgInput').value.trim();
