@@ -41,16 +41,15 @@
             padding: 30px; z-index: 20; color: #d0e0ff; display: none; flex-direction: column; gap: 20px;
             width: 320px; text-align: center;
         }
-        #settingsPanel { width: 360px; }
+        #settingsPanel { width: 300px; }
         #roomPanel input, #settingsPanel input[type="text"], #settingsPanel input[type="number"] {
-            background: #1a1f35; border: 1px solid #3a4a6a; color: #fff; padding: 8px; border-radius: 6px;
+            background: #1a1f35; border: 1px solid #3a4a6a; color: #fff; padding: 8px; border-radius: 6px; width: 80px;
         }
         button { padding: 10px; background: #2a3f6a; border: none; border-radius: 8px; color: white; cursor: pointer; }
         .setting-row {
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
         }
         .setting-row label { font-size: 14px; }
-        .setting-row input[type="range"] { width: 130px; }
         .hint {
             position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
             color:rgba(255,255,255,0.4); font-size:11px; pointer-events:none; z-index:5;
@@ -71,20 +70,20 @@
     <div id="roomPanel">
         <h3 id="roomTitle">联机房间</h3>
         <div id="roomCreateSection"><button id="btnCreateRoom">创建房间</button></div>
-        <div id="roomJoinSection"><input type="text" id="roomCodeInput" placeholder="输入房间码" maxlength="6"><button id="btnJoinRoom">加入房间</button></div>
+        <div id="roomJoinSection"><input type="text" id="roomCodeInput" placeholder="输入房间码" maxlength="6" style="width:120px;"><button id="btnJoinRoom">加入房间</button></div>
         <div id="roomStatus" style="margin-top:10px;"></div>
-        <button id="btnRoomSettings">游戏设置</button>
+        <button id="btnRoomSettings" style="display:none;">游戏设置</button>
         <button id="btnBackToMenu" style="margin-top:5px;">返回菜单</button>
     </div>
 
-    <!-- 设置面板（联机/单人均可调用） -->
+    <!-- 设置面板（简化，仅数字输入） -->
     <div id="settingsPanel">
         <h3>游戏设置</h3>
-        <div class="setting-row"><label>地图尺寸</label><input type="range" id="mapSize" min="50" max="512" value="256" step="16"><input type="number" id="mapSizeVal" value="256" min="50" max="512" style="width:60px;"></div>
-        <div class="setting-row"><label>房间数量</label><input type="range" id="roomCount" min="10" max="100" value="50" step="1"><input type="number" id="roomCountVal" value="50" min="10" max="100" style="width:60px;"></div>
-        <div class="setting-row"><label>最小房间尺寸</label><input type="range" id="minRoomSize" min="3" max="10" value="5" step="1"><input type="number" id="minRoomSizeVal" value="5" min="3" max="10" style="width:60px;"></div>
-        <div class="setting-row"><label>最大房间尺寸</label><input type="range" id="maxRoomSize" min="5" max="20" value="12" step="1"><input type="number" id="maxRoomSizeVal" value="12" min="5" max="20" style="width:60px;"></div>
-        <div class="setting-row"><label>走廊宽度</label><input type="range" id="corridorWidth" min="1" max="4" value="2" step="1"><input type="number" id="corridorWidthVal" value="2" min="1" max="4" style="width:60px;"></div>
+        <div class="setting-row"><label>地图尺寸</label><input type="number" id="mapSizeVal" value="256" min="50" max="512"></div>
+        <div class="setting-row"><label>房间数量</label><input type="number" id="roomCountVal" value="50" min="10" max="100"></div>
+        <div class="setting-row"><label>最小房间尺寸</label><input type="number" id="minRoomSizeVal" value="5" min="3" max="10"></div>
+        <div class="setting-row"><label>最大房间尺寸</label><input type="number" id="maxRoomSizeVal" value="12" min="5" max="20"></div>
+        <div class="setting-row"><label>走廊宽度</label><input type="number" id="corridorWidthVal" value="2" min="1" max="4"></div>
         <div class="setting-row"><label>生成敌人</label><input type="checkbox" id="enableEnemies" checked></div>
         <button id="btnSaveSettings">保存设置</button>
     </div>
@@ -100,45 +99,40 @@
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
 
-            // 游戏设置（单人和联机共用）
+            // 游戏设置
             let gameSettings = {
                 MAP_SIZE: 256, ROOM_COUNT: 50, MIN_ROOM_SIZE: 5, MAX_ROOM_SIZE: 12,
                 CORRIDOR_WIDTH: 2, ENABLE_ENEMIES: true
             };
 
-            // UI 同步
-            const mapSizeRange = document.getElementById('mapSize'), mapSizeVal = document.getElementById('mapSizeVal');
-            const roomCountRange = document.getElementById('roomCount'), roomCountVal = document.getElementById('roomCountVal');
-            const minRoomSizeRange = document.getElementById('minRoomSize'), minRoomSizeVal = document.getElementById('minRoomSizeVal');
-            const maxRoomSizeRange = document.getElementById('maxRoomSize'), maxRoomSizeVal = document.getElementById('maxRoomSizeVal');
-            const corridorWidthRange = document.getElementById('corridorWidth'), corridorWidthVal = document.getElementById('corridorWidthVal');
+            // UI 元素
+            const mapSizeVal = document.getElementById('mapSizeVal');
+            const roomCountVal = document.getElementById('roomCountVal');
+            const minRoomSizeVal = document.getElementById('minRoomSizeVal');
+            const maxRoomSizeVal = document.getElementById('maxRoomSizeVal');
+            const corridorWidthVal = document.getElementById('corridorWidthVal');
             const enableEnemiesCheck = document.getElementById('enableEnemies');
 
             function syncUISettings() {
-                mapSizeRange.value = mapSizeVal.value = gameSettings.MAP_SIZE;
-                roomCountRange.value = roomCountVal.value = gameSettings.ROOM_COUNT;
-                minRoomSizeRange.value = minRoomSizeVal.value = gameSettings.MIN_ROOM_SIZE;
-                maxRoomSizeRange.value = maxRoomSizeVal.value = gameSettings.MAX_ROOM_SIZE;
-                corridorWidthRange.value = corridorWidthVal.value = gameSettings.CORRIDOR_WIDTH;
+                mapSizeVal.value = gameSettings.MAP_SIZE;
+                roomCountVal.value = gameSettings.ROOM_COUNT;
+                minRoomSizeVal.value = gameSettings.MIN_ROOM_SIZE;
+                maxRoomSizeVal.value = gameSettings.MAX_ROOM_SIZE;
+                corridorWidthVal.value = gameSettings.CORRIDOR_WIDTH;
                 enableEnemiesCheck.checked = gameSettings.ENABLE_ENEMIES;
             }
             syncUISettings();
 
             function saveUISettings() {
-                gameSettings.MAP_SIZE = parseInt(mapSizeVal.value);
-                gameSettings.ROOM_COUNT = parseInt(roomCountVal.value);
-                gameSettings.MIN_ROOM_SIZE = parseInt(minRoomSizeVal.value);
-                gameSettings.MAX_ROOM_SIZE = parseInt(maxRoomSizeVal.value);
-                gameSettings.CORRIDOR_WIDTH = parseInt(corridorWidthVal.value);
+                gameSettings.MAP_SIZE = parseInt(mapSizeVal.value) || 256;
+                gameSettings.ROOM_COUNT = parseInt(roomCountVal.value) || 50;
+                gameSettings.MIN_ROOM_SIZE = parseInt(minRoomSizeVal.value) || 5;
+                gameSettings.MAX_ROOM_SIZE = parseInt(maxRoomSizeVal.value) || 12;
+                gameSettings.CORRIDOR_WIDTH = parseInt(corridorWidthVal.value) || 2;
                 gameSettings.ENABLE_ENEMIES = enableEnemiesCheck.checked;
                 document.getElementById('settingsPanel').style.display = 'none';
             }
-
             document.getElementById('btnSaveSettings').addEventListener('click', saveUISettings);
-            document.getElementById('btnRoomSettings').addEventListener('click', () => {
-                syncUISettings();
-                document.getElementById('settingsPanel').style.display = 'flex';
-            });
 
             let gameState = 'menu';
             let isMultiplayer = false, isHost = false;
@@ -155,7 +149,8 @@
             let currentWeapon, weapons;
             let enemies=[], healthPacks=[], weaponPickups=[], ammoPacks=[];
             let map=[], walls=[];
-            const WALL_HEIGHT=5.0, ENEMY_HEIGHT=1.8, ENEMY_CHASE_DIST=16;
+            const WALL_HEIGHT=5.0, ENEMY_HEIGHT=1.8, ENEMY_CHASE_DIST=16, PLAYER_SPEED=5.5, ENEMY_SPEED=4.0;
+            let MAP_SIZE = 256;
 
             let enemyImg = new Image();
             enemyImg.src = 'https://i.mituw.com/imgs/2026/03/15/de4945abb96be550.jpg';
@@ -175,7 +170,7 @@
             }
             initWeapons();
 
-            function inBounds(x,z){ return x>=0&&x<MAP_SIZE&&z>=0&&z<MAP_SIZE; }
+            function inBounds(x,z){ return x>=0 && x<MAP_SIZE && z>=0 && z<MAP_SIZE; }
             function isWallAt(wx,wz,r=0.25){ for(let [cx,cz] of [[wx-r,wz-r],[wx+r,wz-r],[wx-r,wz+r],[wx+r,wz+r]]){ let ix=cx|0,iz=cz|0; if(!inBounds(ix,iz)||map[ix][iz]===1) return true; } return false; }
 
             let W,H,centerX,centerY,focalLength;
@@ -188,6 +183,7 @@
                 if(camZ<=0.01) return null;
                 return {x:centerX+(camX/camZ)*focalLength,y:centerY-(camY/camZ)*focalLength,z:camZ};
             }
+
             function ab(hex,f){ let n=parseInt(hex.slice(1),16); return `rgb(${Math.min(255,((n>>16)&0xff)*f)},${Math.min(255,((n>>8)&0xff)*f)},${Math.min(255,(n&0xff)*f)})`; }
             function drawWall(w1,w2,h,color,bri){ let p1=project(w1.x,0,w1.z),p2=project(w2.x,0,w2.z); if(!p1||!p2)return; let t1=project(w1.x,h,w1.z),t2=project(w2.x,h,w2.z); if(!t1||!t2)return; ctx.fillStyle=ab(color,bri); ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.lineTo(t2.x,t2.y);ctx.lineTo(t1.x,t1.y);ctx.closePath();ctx.fill(); }
             function drawEnemy(e){
@@ -215,7 +211,6 @@
                 ctx.fillStyle='#0f0';ctx.fillRect(p.x-s/2,p.y-s-10,s*(data.health/100),3);
             }
 
-            // 随机数种子生成器（用于确定性地图）
             function seededRandom(seed) {
                 let x = Math.sin(seed) * 10000;
                 return x - Math.floor(x);
@@ -223,8 +218,7 @@
 
             function generateLocalMap(settings){
                 const {MAP_SIZE, ROOM_COUNT, MIN_ROOM_SIZE, MAX_ROOM_SIZE, CORRIDOR_WIDTH, ENABLE_ENEMIES} = settings;
-                // 设置全局 MAP_SIZE
-                window.MAP_SIZE = MAP_SIZE; // 使 inBounds 可用
+                window.MAP_SIZE = MAP_SIZE;
                 map = Array.from({length: MAP_SIZE}, () => new Array(MAP_SIZE).fill(1));
                 let rooms = [];
                 let attempts = 500;
@@ -241,7 +235,6 @@
                     } else { attempts--; r--; }
                 }
                 if (rooms.length===0) { rooms.push({x:10,z:10,w:10,h:10,cx:15,cz:15}); for (let i=10;i<20;i++) for (let j=10;j<20;j++) map[i][j]=0; }
-                // Prim连接
                 let connected=[rooms[0]], unconnected=rooms.slice(1);
                 while (unconnected.length) {
                     let best=Infinity, bestA, bestB, bestIdx;
@@ -255,7 +248,6 @@
                     for (let z=Math.min(cz1,cz2); z<=Math.max(cz1,cz2); z++) for (let w=0; w<CORRIDOR_WIDTH; w++) if (inBounds(cx2+w,z)) map[cx2+w][z]=0;
                     connected.push(bestB); unconnected.splice(bestIdx,1);
                 }
-                // 墙面生成
                 walls=[]; const wallSet=new Set(); const colors=['#8b7355','#7d8a7a','#9e8c7b','#a09080','#b0a090','#c0b0a0','#6b8c9e','#8a7d6b','#7a6b5a','#9d8b7b'];
                 const addWall=(x1,z1,x2,z2,col)=>{ let k=`${x1},${z1},${x2},${z2}`; if(!wallSet.has(k)){ wallSet.add(k); walls.push({x1,z1,x2,z2,h:WALL_HEIGHT,color:col}); } };
                 for (let x=0; x<MAP_SIZE; x++) for (let z=0; z<MAP_SIZE; z++) {
@@ -266,9 +258,7 @@
                     if (z>0&&map[x][z-1]===1) addWall(x,z,x+1,z,col);
                     if (z<MAP_SIZE-1&&map[x][z+1]===1) addWall(x,z+1,x+1,z+1,col);
                 }
-                // 玩家出生点
                 player.x = rooms[0].cx; player.z = rooms[0].cz; player.angle = 0;
-                // 敌人物品生成（根据开关）
                 enemies=[]; healthPacks=[]; weaponPickups=[]; ammoPacks=[];
                 if (ENABLE_ENEMIES) {
                     for (let i=1; i<rooms.length; i++) {
@@ -283,7 +273,6 @@
                         }
                     }
                 }
-                // 物品（血包、武器、弹药）
                 for (let i=1; i<rooms.length; i++) {
                     let r=rooms[i];
                     if (seededRandom(i*31+17) < 0.3) healthPacks.push({ x:r.x+1+seededRandom(i*37+19)*(r.w-2), z:r.z+1+seededRandom(i*41+23)*(r.h-2), alive:true });
@@ -300,7 +289,6 @@
                 return rooms;
             }
 
-            // 射击逻辑（同上，略作调整）
             function hitEnemyWithRay(ox,oz,offset=0){
                 let a=player.angle+offset, fx=Math.sin(a), fz=-Math.cos(a);
                 for(let d=0; d<40; d+=0.25){
@@ -326,7 +314,6 @@
                     }
                 }
                 if(anyHit){ screenShake=Math.max(screenShake, currentWeapon.shake); playTone(200,0.08,'square',0.12); }
-                // 弹孔
                 for(let i=0; i<currentWeapon.bullets; i++){
                     let spread=(Math.random()-0.5)*currentWeapon.spread*2, a=player.angle+spread, fx=Math.sin(a), fz=-Math.cos(a);
                     let t=0, step=0.05;
@@ -388,7 +375,6 @@
                 updateEnemies(dt);
                 pickupItems();
 
-                // 同步自身状态
                 if(isMultiplayer){
                     supabase.from('players').upsert({
                         id: roomId+'_'+myUserId, room_id: roomId, user_id: myUserId,
@@ -444,7 +430,6 @@
                 for(let bh of bulletHoles){ let p=project(bh.x,1.0,bh.z); if(p&&p.x>0&&p.x<W&&p.y>0&&p.y<H){ ctx.fillStyle='#111';ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill(); ctx.fillStyle='#333';ctx.beginPath();ctx.arc(p.x,p.y,1.5,0,Math.PI*2);ctx.fill(); } }
                 ctx.restore();
 
-                // HUD
                 let hpW=200,hpH=16,hpX=10,hpY=H-30;
                 ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(hpX-1,hpY-1,hpW+2,hpH+2);
                 ctx.fillStyle='#600';ctx.fillRect(hpX,hpY,hpW,hpH);
@@ -499,13 +484,13 @@
                 roomStatus.innerHTML=`房间码: ${roomId} ，等待玩家加入...<br>`;
                 document.getElementById('roomCreateSection').style.display='none';
                 document.getElementById('roomJoinSection').style.display='none';
+                document.getElementById('btnRoomSettings').style.display='block';
                 let ch=supabase.channel(`room-${roomId}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'players',filter:`room_id=eq.${roomId}`},(payload)=>{
                     if(payload.new.user_id!==myUserId) roomStatus.innerHTML+=`玩家 ${payload.new.user_id.substr(0,4)} 已加入<br>`;
                 }).subscribe();
                 subscriptions.push(ch);
                 let startBtn=document.createElement('button'); startBtn.innerText='开始游戏';
                 startBtn.onclick=async ()=>{
-                    // 应用当前设置
                     saveUISettings();
                     await supabase.from('rooms').update({state:'playing', map_seed: gameSettings}).eq('id', roomId);
                     await startMultiplayerGameAsHost();
@@ -518,15 +503,14 @@
                 let {data:roomData}=await supabase.from('rooms').select('*').eq('id',code).single();
                 if(!roomData||roomData.state!=='lobby'){ alert('房间不存在或已开始游戏'); return; }
                 roomId=code; isHost=false; isMultiplayer=true;
-                // 获取种子设置
                 if(roomData.map_seed) gameSettings = roomData.map_seed;
                 await supabase.from('players').insert({id:roomId+'_'+myUserId, room_id:roomId, user_id:myUserId});
                 roomStatus.innerText=`已加入房间 ${roomId} ，等待房主开始...`;
                 document.getElementById('roomCreateSection').style.display='none';
                 document.getElementById('roomJoinSection').style.display='none';
+                document.getElementById('btnRoomSettings').style.display='none';
                 let ch=supabase.channel(`room-${roomId}`).on('postgres_changes',{event:'UPDATE',schema:'public',table:'rooms',filter:`id=eq.${roomId}`},async(payload)=>{
-                    if(payload.new.state==='playing'){
-                        // 使用房主上传的设置和地图
+                    if(payload.new.state==='playing' && payload.new.map_data){
                         if(payload.new.map_seed) gameSettings = payload.new.map_seed;
                         await startMultiplayerGameAsClient(payload.new.map_data);
                     }
@@ -539,8 +523,9 @@
                 gameState='playing';
                 generateLocalMap(gameSettings);
                 let wallsData = walls.map(w=>({x1:w.x1,z1:w.z1,x2:w.x2,z2:w.z2,color:w.color}));
+                // 先更新 map_data，再改状态，确保客户端能拿到完整数据
                 await supabase.from('rooms').update({map_data:{map, MAP_SIZE, walls:wallsData}}).eq('id', roomId);
-                // 上传敌人物品
+                await supabase.from('rooms').update({state:'playing'}).eq('id', roomId);
                 await supabase.from('enemies').delete().eq('room_id', roomId);
                 await supabase.from('pickups').delete().eq('room_id', roomId);
                 if(gameSettings.ENABLE_ENEMIES){
@@ -634,10 +619,9 @@
                 canvas.requestPointerLock();
             }
 
-            // 重生（仅联机）
+            // 重生
             window.addEventListener('keydown', (e) => {
                 if(e.key.toLowerCase() === 'r' && isMultiplayer && player.health <= 0 && gameState==='playing'){
-                    // 随机出生点
                     let attempts=100;
                     while(attempts--){
                         let rx = 5 + Math.random()*(MAP_SIZE-10), rz = 5 + Math.random()*(MAP_SIZE-10);
@@ -650,12 +634,56 @@
                 }
             });
 
+            // 触摸事件（手机操控）
+            let touchLookX=null, touchMoveId=null, moveBase=null;
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault(); initAudio();
+                for (let t of e.changedTouches) {
+                    const rect = canvas.getBoundingClientRect();
+                    const cx = (t.clientX - rect.left) * (canvas.width / rect.width);
+                    if (cx < canvas.width * 0.5 && touchMoveId === null) {
+                        touchMoveId = t.identifier;
+                        moveBase = { x: cx, y: (t.clientY - rect.top) * (canvas.height / rect.height) };
+                    } else if (cx >= canvas.width * 0.5 && touchLookX === null) {
+                        touchLookX = t.clientX;
+                        touchShooting = true;
+                    }
+                }
+            }, { passive: false });
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                input.forward = input.backward = input.left = input.right = false;
+                for (let t of e.touches) {
+                    const rect = canvas.getBoundingClientRect();
+                    const cx = (t.clientX - rect.left) * (canvas.width / rect.width);
+                    const cy = (t.clientY - rect.top) * (canvas.height / rect.height);
+                    if (t.identifier === touchMoveId && moveBase) {
+                        let dx = cx - moveBase.x, dy = cy - moveBase.y;
+                        if (dy < -15) input.forward = true;
+                        if (dy > 15) input.backward = true;
+                        if (dx < -15) input.left = true;
+                        if (dx > 15) input.right = true;
+                    }
+                    if (t.identifier !== touchMoveId && touchLookX !== null) {
+                        player.angle += (t.clientX - touchLookX) * 0.008;
+                        touchLookX = t.clientX;
+                    }
+                }
+            }, { passive: false });
+            canvas.addEventListener('touchend', (e) => {
+                for (let t of e.changedTouches) {
+                    if (t.identifier === touchMoveId) { touchMoveId = null; moveBase = null; input.forward=input.backward=input.left=input.right=false; }
+                    if (touchLookX !== null && t.identifier !== touchMoveId) { touchLookX = null; touchShooting = false; }
+                }
+            });
+
             // 按钮事件
             document.getElementById('btnSolo').addEventListener('click', startSoloGame);
             document.getElementById('btnMultiplayer').addEventListener('click', ()=>{
                 roomPanel.style.display='flex';
                 document.getElementById('roomCreateSection').style.display='block';
                 document.getElementById('roomJoinSection').style.display='block';
+                document.getElementById('btnRoomSettings').style.display='none';
                 roomStatus.innerText=''; roomTitle.innerText='联机房间';
             });
             document.getElementById('btnCreateRoom').addEventListener('click', createRoom);
@@ -663,7 +691,6 @@
             document.getElementById('btnBackToMenu').addEventListener('click', ()=>{ roomPanel.style.display='none'; returnToMenu(); });
             document.getElementById('btnSettings').addEventListener('click', ()=>{ syncUISettings(); document.getElementById('settingsPanel').style.display='flex'; });
 
-            // 输入处理
             window.addEventListener('keydown',(e)=>{
                 if(e.key.toLowerCase()==='escape' && gameState==='playing') returnToMenu();
                 switch(e.key.toLowerCase()){
