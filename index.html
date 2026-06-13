@@ -6,6 +6,7 @@
     <title>德军总部 · 联机修复</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* 样式同上，略 */
         :root { --bg: #0a0a14; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -14,7 +15,6 @@
             touch-action: none; user-select: none; -webkit-user-select: none;
         }
         canvas { display: block; max-width: 100vw; max-height: 100vh; cursor: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); }
-
         #mainMenu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #1a1a2e 0%, #0a0a14 100%);
@@ -34,7 +34,6 @@
         }
         .menu-btn:hover { background: rgba(40,60,120,0.9); transform: scale(1.05); }
         .menu-btn:active { transform: scale(0.98); }
-
         #roomPanel, #settingsPanel {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
             background: rgba(10,15,30,0.95); border: 1px solid #3a5f9a; border-radius: 16px;
@@ -46,9 +45,7 @@
             background: #1a1f35; border: 1px solid #3a4a6a; color: #fff; padding: 8px; border-radius: 6px;
         }
         button { padding: 10px; background: #2a3f6a; border: none; border-radius: 8px; color: white; cursor: pointer; }
-        .setting-row {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
-        }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .setting-row label { font-size: 14px; }
         .setting-row input[type="number"] { width: 70px; }
         .hint {
@@ -377,7 +374,7 @@
                         health: player.health, score: player.score,
                         weapon: currentWeapon.name, ammo: currentWeapon.ammo,
                         is_alive: player.health>0, last_update: new Date().toISOString()
-                    }, {onConflict:'id'});
+                    }, {onConflict:'id'}).catch(e=>console.error('更新玩家状态失败', e));
                 }
             }
 
@@ -485,16 +482,33 @@
                 }).subscribe();
                 subscriptions.push(ch);
                 let startBtn=document.createElement('button'); startBtn.innerText='开始游戏';
-                startBtn.onclick=async ()=>{
-                    canvas.requestPointerLock(); // 立即请求锁定（同步，在用户手势中）
-                    generateLocalMap(gameSettings);
-                    let wallsData = walls.map(w=>({x1:w.x1,z1:w.z1,x2:w.x2,z2:w.z2,color:w.color}));
-                    await supabase.from('rooms').update({
-                        state:'playing',
-                        map_seed: gameSettings,
-                        map_data: {map, MAP_SIZE, walls:wallsData}
-                    }).eq('id', roomId);
-                    await startMultiplayerGameAsHost();
+                startBtn.onclick=function(){
+                    console.log('开始游戏按钮被点击');
+                    try {
+                        // 立即请求锁定（必须在用户手势中）
+                        canvas.requestPointerLock();
+                    } catch(e) {
+                        console.error('requestPointerLock error', e);
+                    }
+                    // 异步开始游戏
+                    (async () => {
+                        try {
+                            console.log('生成地图...');
+                            generateLocalMap(gameSettings);
+                            let wallsData = walls.map(w=>({x1:w.x1,z1:w.z1,x2:w.x2,z2:w.z2,color:w.color}));
+                            console.log('更新房间状态...');
+                            await supabase.from('rooms').update({
+                                state:'playing',
+                                map_seed: gameSettings,
+                                map_data: {map, MAP_SIZE, walls:wallsData}
+                            }).eq('id', roomId);
+                            console.log('开始主机游戏...');
+                            await startMultiplayerGameAsHost();
+                        } catch (err) {
+                            console.error('开始游戏失败:', err);
+                            alert('开始游戏失败，请查看控制台');
+                        }
+                    })();
                 };
                 roomStatus.appendChild(startBtn);
             }
@@ -512,7 +526,10 @@
                 document.getElementById('btnRoomSettings').style.display='none';
                 let ch=supabase.channel(`room-${roomId}`).on('postgres_changes',{event:'UPDATE',schema:'public',table:'rooms',filter:`id=eq.${roomId}`},async(payload)=>{
                     if(payload.new.state==='playing'){
-                        canvas.requestPointerLock(); // 同样，在用户手势引起的回调中请求锁定
+                        console.log('房主已开始，准备进入游戏...');
+                        try {
+                            canvas.requestPointerLock();
+                        } catch(e) {}
                         if(payload.new.map_seed) gameSettings = payload.new.map_seed;
                         await startMultiplayerGameAsClient(payload.new.map_data);
                     }
@@ -523,14 +540,17 @@
             async function startMultiplayerGameAsHost(){
                 mainMenu.classList.add('hidden'); roomPanel.style.display='none';
                 gameState='playing';
+                console.log('清理旧数据...');
                 await supabase.from('enemies').delete().eq('room_id', roomId);
                 await supabase.from('pickups').delete().eq('room_id', roomId);
                 if(gameSettings.ENABLE_ENEMIES){
+                    console.log('插入敌人数据...');
                     for(let i=0; i<enemies.length; i++){
                         let e=enemies[i];
                         await supabase.from('enemies').insert({room_id:roomId, enemy_index:i, x:e.x, z:e.z, hp:e.hp, max_hp:e.maxHp, alive:e.alive});
                     }
                 }
+                console.log('插入物品数据...');
                 for(let i=0; i<healthPacks.length; i++) await supabase.from('pickups').insert({room_id:roomId, pickup_index:i, type:'health', x:healthPacks[i].x, z:healthPacks[i].z, alive:true});
                 for(let i=0; i<weaponPickups.length; i++) await supabase.from('pickups').insert({room_id:roomId, pickup_index:i+1000, type:weaponPickups[i].type, x:weaponPickups[i].x, z:weaponPickups[i].z, alive:true});
                 for(let i=0; i<ammoPacks.length; i++) await supabase.from('pickups').insert({room_id:roomId, pickup_index:i+2000, type:'ammo', x:ammoPacks[i].x, z:ammoPacks[i].z, alive:true});
@@ -568,12 +588,14 @@
                     }
                 }).subscribe();
                 subscriptions.push(evCh);
+                console.log('主机游戏已启动');
             }
 
             async function startMultiplayerGameAsClient(mapData){
                 mainMenu.classList.add('hidden'); roomPanel.style.display='none';
                 gameState='playing';
                 if(!mapData || !mapData.map) { alert('地图数据错误'); returnToMenu(); return; }
+                console.log('客户端加载地图...');
                 map = mapData.map; MAP_SIZE = map.length;
                 walls = mapData.walls.map(w=>({x1:w.x1,z1:w.z1,x2:w.x2,z2:w.z2,h:WALL_HEIGHT,color:w.color}));
                 player.x = mapData.rooms?.[0]?.cx || 10; player.z = mapData.rooms?.[0]?.cz || 10;
@@ -613,6 +635,7 @@
                     }
                 }).subscribe();
                 subscriptions.push(playerCh);
+                console.log('客户端游戏已启动');
             }
 
             // 重生
