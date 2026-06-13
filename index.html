@@ -41,15 +41,16 @@
             padding: 30px; z-index: 20; color: #d0e0ff; display: none; flex-direction: column; gap: 20px;
             width: 320px; text-align: center;
         }
-        #settingsPanel { width: 300px; }
-        #roomPanel input, #settingsPanel input[type="text"], #settingsPanel input[type="number"] {
-            background: #1a1f35; border: 1px solid #3a4a6a; color: #fff; padding: 8px; border-radius: 6px; width: 80px;
+        #settingsPanel { width: 340px; }
+        #roomPanel input, #settingsPanel input[type="number"] {
+            background: #1a1f35; border: 1px solid #3a4a6a; color: #fff; padding: 8px; border-radius: 6px;
         }
         button { padding: 10px; background: #2a3f6a; border: none; border-radius: 8px; color: white; cursor: pointer; }
         .setting-row {
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
         }
         .setting-row label { font-size: 14px; }
+        .setting-row input[type="number"] { width: 70px; }
         .hint {
             position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
             color:rgba(255,255,255,0.4); font-size:11px; pointer-events:none; z-index:5;
@@ -70,20 +71,20 @@
     <div id="roomPanel">
         <h3 id="roomTitle">联机房间</h3>
         <div id="roomCreateSection"><button id="btnCreateRoom">创建房间</button></div>
-        <div id="roomJoinSection"><input type="text" id="roomCodeInput" placeholder="输入房间码" maxlength="6" style="width:120px;"><button id="btnJoinRoom">加入房间</button></div>
+        <div id="roomJoinSection"><input type="text" id="roomCodeInput" placeholder="输入房间码" maxlength="6"><button id="btnJoinRoom">加入房间</button></div>
         <div id="roomStatus" style="margin-top:10px;"></div>
         <button id="btnRoomSettings" style="display:none;">游戏设置</button>
-        <button id="btnBackToMenu" style="margin-top:5px;">返回菜单</button>
+        <button id="btnBackToMenu">返回菜单</button>
     </div>
 
-    <!-- 设置面板（简化，仅数字输入） -->
+    <!-- 设置面板（单人或房主可用） -->
     <div id="settingsPanel">
         <h3>游戏设置</h3>
-        <div class="setting-row"><label>地图尺寸</label><input type="number" id="mapSizeVal" value="256" min="50" max="512"></div>
-        <div class="setting-row"><label>房间数量</label><input type="number" id="roomCountVal" value="50" min="10" max="100"></div>
-        <div class="setting-row"><label>最小房间尺寸</label><input type="number" id="minRoomSizeVal" value="5" min="3" max="10"></div>
-        <div class="setting-row"><label>最大房间尺寸</label><input type="number" id="maxRoomSizeVal" value="12" min="5" max="20"></div>
-        <div class="setting-row"><label>走廊宽度</label><input type="number" id="corridorWidthVal" value="2" min="1" max="4"></div>
+        <div class="setting-row"><label>地图尺寸 (50-512)</label><input type="number" id="mapSizeVal" value="256" min="50" max="512"></div>
+        <div class="setting-row"><label>房间数量 (10-100)</label><input type="number" id="roomCountVal" value="50" min="10" max="100"></div>
+        <div class="setting-row"><label>最小房间尺寸 (3-10)</label><input type="number" id="minRoomSizeVal" value="5" min="3" max="10"></div>
+        <div class="setting-row"><label>最大房间尺寸 (5-20)</label><input type="number" id="maxRoomSizeVal" value="12" min="5" max="20"></div>
+        <div class="setting-row"><label>走廊宽度 (1-4)</label><input type="number" id="corridorWidthVal" value="2" min="1" max="4"></div>
         <div class="setting-row"><label>生成敌人</label><input type="checkbox" id="enableEnemies" checked></div>
         <button id="btnSaveSettings">保存设置</button>
     </div>
@@ -121,7 +122,6 @@
                 corridorWidthVal.value = gameSettings.CORRIDOR_WIDTH;
                 enableEnemiesCheck.checked = gameSettings.ENABLE_ENEMIES;
             }
-            syncUISettings();
 
             function saveUISettings() {
                 gameSettings.MAP_SIZE = parseInt(mapSizeVal.value) || 256;
@@ -132,6 +132,7 @@
                 gameSettings.ENABLE_ENEMIES = enableEnemiesCheck.checked;
                 document.getElementById('settingsPanel').style.display = 'none';
             }
+
             document.getElementById('btnSaveSettings').addEventListener('click', saveUISettings);
 
             let gameState = 'menu';
@@ -149,7 +150,8 @@
             let currentWeapon, weapons;
             let enemies=[], healthPacks=[], weaponPickups=[], ammoPacks=[];
             let map=[], walls=[];
-            const WALL_HEIGHT=5.0, ENEMY_HEIGHT=1.8, ENEMY_CHASE_DIST=16, PLAYER_SPEED=5.5, ENEMY_SPEED=4.0;
+            const WALL_HEIGHT=5.0, ENEMY_HEIGHT=1.8, ENEMY_CHASE_DIST=16;
+            const ENEMY_SPEED = 4.0, PLAYER_SPEED = 5.5;
             let MAP_SIZE = 256;
 
             let enemyImg = new Image();
@@ -183,7 +185,6 @@
                 if(camZ<=0.01) return null;
                 return {x:centerX+(camX/camZ)*focalLength,y:centerY-(camY/camZ)*focalLength,z:camZ};
             }
-
             function ab(hex,f){ let n=parseInt(hex.slice(1),16); return `rgb(${Math.min(255,((n>>16)&0xff)*f)},${Math.min(255,((n>>8)&0xff)*f)},${Math.min(255,(n&0xff)*f)})`; }
             function drawWall(w1,w2,h,color,bri){ let p1=project(w1.x,0,w1.z),p2=project(w2.x,0,w2.z); if(!p1||!p2)return; let t1=project(w1.x,h,w1.z),t2=project(w2.x,h,w2.z); if(!t1||!t2)return; ctx.fillStyle=ab(color,bri); ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.lineTo(t2.x,t2.y);ctx.lineTo(t1.x,t1.y);ctx.closePath();ctx.fill(); }
             function drawEnemy(e){
@@ -217,8 +218,8 @@
             }
 
             function generateLocalMap(settings){
-                const {MAP_SIZE, ROOM_COUNT, MIN_ROOM_SIZE, MAX_ROOM_SIZE, CORRIDOR_WIDTH, ENABLE_ENEMIES} = settings;
-                window.MAP_SIZE = MAP_SIZE;
+                const {MAP_SIZE:MS, ROOM_COUNT, MIN_ROOM_SIZE, MAX_ROOM_SIZE, CORRIDOR_WIDTH, ENABLE_ENEMIES} = settings;
+                MAP_SIZE = MS;
                 map = Array.from({length: MAP_SIZE}, () => new Array(MAP_SIZE).fill(1));
                 let rooms = [];
                 let attempts = 500;
@@ -484,15 +485,21 @@
                 roomStatus.innerHTML=`房间码: ${roomId} ，等待玩家加入...<br>`;
                 document.getElementById('roomCreateSection').style.display='none';
                 document.getElementById('roomJoinSection').style.display='none';
-                document.getElementById('btnRoomSettings').style.display='block';
+                document.getElementById('btnRoomSettings').style.display='block'; // 房主可见设置按钮
                 let ch=supabase.channel(`room-${roomId}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'players',filter:`room_id=eq.${roomId}`},(payload)=>{
                     if(payload.new.user_id!==myUserId) roomStatus.innerHTML+=`玩家 ${payload.new.user_id.substr(0,4)} 已加入<br>`;
                 }).subscribe();
                 subscriptions.push(ch);
                 let startBtn=document.createElement('button'); startBtn.innerText='开始游戏';
                 startBtn.onclick=async ()=>{
-                    saveUISettings();
-                    await supabase.from('rooms').update({state:'playing', map_seed: gameSettings}).eq('id', roomId);
+                    // 应用当前设置并一次性更新房间状态和地图数据
+                    generateLocalMap(gameSettings);
+                    let wallsData = walls.map(w=>({x1:w.x1,z1:w.z1,x2:w.x2,z2:w.z2,color:w.color}));
+                    await supabase.from('rooms').update({
+                        state:'playing',
+                        map_seed: gameSettings,
+                        map_data: {map, MAP_SIZE, walls:wallsData}
+                    }).eq('id', roomId);
                     await startMultiplayerGameAsHost();
                 };
                 roomStatus.appendChild(startBtn);
@@ -508,9 +515,9 @@
                 roomStatus.innerText=`已加入房间 ${roomId} ，等待房主开始...`;
                 document.getElementById('roomCreateSection').style.display='none';
                 document.getElementById('roomJoinSection').style.display='none';
-                document.getElementById('btnRoomSettings').style.display='none';
+                document.getElementById('btnRoomSettings').style.display='none'; // 游客不显示设置
                 let ch=supabase.channel(`room-${roomId}`).on('postgres_changes',{event:'UPDATE',schema:'public',table:'rooms',filter:`id=eq.${roomId}`},async(payload)=>{
-                    if(payload.new.state==='playing' && payload.new.map_data){
+                    if(payload.new.state==='playing'){
                         if(payload.new.map_seed) gameSettings = payload.new.map_seed;
                         await startMultiplayerGameAsClient(payload.new.map_data);
                     }
@@ -521,11 +528,8 @@
             async function startMultiplayerGameAsHost(){
                 mainMenu.classList.add('hidden'); roomPanel.style.display='none';
                 gameState='playing';
-                generateLocalMap(gameSettings);
-                let wallsData = walls.map(w=>({x1:w.x1,z1:w.z1,x2:w.x2,z2:w.z2,color:w.color}));
-                // 先更新 map_data，再改状态，确保客户端能拿到完整数据
-                await supabase.from('rooms').update({map_data:{map, MAP_SIZE, walls:wallsData}}).eq('id', roomId);
-                await supabase.from('rooms').update({state:'playing'}).eq('id', roomId);
+                // 地图已在createRoom的开始按钮中生成并上传，这里直接使用已经生成的本地数据
+                // 上传敌人和物品
                 await supabase.from('enemies').delete().eq('room_id', roomId);
                 await supabase.from('pickups').delete().eq('room_id', roomId);
                 if(gameSettings.ENABLE_ENEMIES){
@@ -577,6 +581,7 @@
             async function startMultiplayerGameAsClient(mapData){
                 mainMenu.classList.add('hidden'); roomPanel.style.display='none';
                 gameState='playing';
+                if(!mapData || !mapData.map) { alert('地图数据错误'); returnToMenu(); return; }
                 map = mapData.map; MAP_SIZE = map.length;
                 walls = mapData.walls.map(w=>({x1:w.x1,z1:w.z1,x2:w.x2,z2:w.z2,h:WALL_HEIGHT,color:w.color}));
                 player.x = mapData.rooms?.[0]?.cx || 10; player.z = mapData.rooms?.[0]?.cz || 10;
@@ -634,10 +639,11 @@
                 }
             });
 
-            // 触摸事件（手机操控）
-            let touchLookX=null, touchMoveId=null, moveBase=null;
+            // 触屏支持
+            let touchLookX = null, touchMoveId = null, moveBase = null;
             canvas.addEventListener('touchstart', (e) => {
-                e.preventDefault(); initAudio();
+                e.preventDefault();
+                initAudio();
                 for (let t of e.changedTouches) {
                     const rect = canvas.getBoundingClientRect();
                     const cx = (t.clientX - rect.left) * (canvas.width / rect.width);
@@ -672,7 +678,7 @@
             }, { passive: false });
             canvas.addEventListener('touchend', (e) => {
                 for (let t of e.changedTouches) {
-                    if (t.identifier === touchMoveId) { touchMoveId = null; moveBase = null; input.forward=input.backward=input.left=input.right=false; }
+                    if (t.identifier === touchMoveId) { touchMoveId = null; moveBase = null; input.forward = input.backward = input.left = input.right = false; }
                     if (touchLookX !== null && t.identifier !== touchMoveId) { touchLookX = null; touchShooting = false; }
                 }
             });
@@ -689,8 +695,16 @@
             document.getElementById('btnCreateRoom').addEventListener('click', createRoom);
             document.getElementById('btnJoinRoom').addEventListener('click', joinRoom);
             document.getElementById('btnBackToMenu').addEventListener('click', ()=>{ roomPanel.style.display='none'; returnToMenu(); });
-            document.getElementById('btnSettings').addEventListener('click', ()=>{ syncUISettings(); document.getElementById('settingsPanel').style.display='flex'; });
+            document.getElementById('btnRoomSettings').addEventListener('click', ()=>{
+                syncUISettings();
+                document.getElementById('settingsPanel').style.display='flex';
+            });
+            document.getElementById('btnSettings').addEventListener('click', ()=>{
+                syncUISettings();
+                document.getElementById('settingsPanel').style.display='flex';
+            });
 
+            // 键盘鼠标
             window.addEventListener('keydown',(e)=>{
                 if(e.key.toLowerCase()==='escape' && gameState==='playing') returnToMenu();
                 switch(e.key.toLowerCase()){
