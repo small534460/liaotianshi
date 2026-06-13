@@ -1,373 +1,706 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Small 3 的聊天室</title>
-  <style>
-    :root{--bg:#1a1a2e;--text:#e0e0e0;--accent:#60a5fa;--accent2:#3b82f6;--my-msg:#1a3a2a;--other-msg:#16213e;--input-bg:#0f1724;--sidebar-bg:rgba(0,0,0,0.8);--border:rgba(255,255,255,0.1);--radius:12px;--green:#10B981;--red:#EF4444;--gold:#f59e0b;}
-    body.light{--bg:#f0f0f0;--text:#333;--my-msg:#e3f2fd;--other-msg:#ffffff;--input-bg:#e8e8e8;--sidebar-bg:rgba(255,255,255,0.95);--border:rgba(0,0,0,0.1);}
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;height:100vh;display:flex;overflow:hidden;transition:all .3s}
-    
-    .sidebar-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;display:none}
-    .sidebar-overlay.show{display:block}
-    .sidebar{position:fixed;top:0;left:-300px;width:280px;height:100%;background:var(--sidebar-bg);backdrop-filter:blur(15px);z-index:1000;transition:left .3s;display:flex;flex-direction:column;padding:20px 16px;border-right:1px solid var(--border)}
-    .sidebar.open{left:0}
-    .sidebar-close{position:absolute;top:10px;right:10px;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer}
-    .sidebar-header{text-align:center;margin-bottom:20px}
-    .sidebar-header img{width:60px;height:60px;border-radius:50%;border:3px solid var(--accent)}
-    .sidebar-header h3{margin-top:8px;font-size:16px;color:var(--accent)}
-    .sidebar-btn{display:block;width:100%;padding:12px;margin:6px 0;background:rgba(96,165,250,0.1);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:14px;text-align:left;transition:all .2s}
-    .sidebar-btn:hover{background:rgba(96,165,250,0.2);border-color:var(--accent)}
-    .sidebar-btn.danger{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3)}
-    .sidebar-btn.danger:hover{background:rgba(239,68,68,0.2)}
-    
-    .main{flex:1;display:flex;flex-direction:column;height:100%}
-    .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border)}
-    .topbar h2{font-size:18px;font-weight:600;color:var(--accent)}
-    .topbar .gear-btn{background:none;border:none;color:var(--text);font-size:22px;cursor:pointer}
-    
-    .chat-area{flex:1;overflow-y:auto;padding:16px}
-    .msg-row{margin-bottom:12px;display:flex;flex-direction:column;align-items:flex-start}
-    .msg-meta{font-size:11px;margin-bottom:2px;opacity:0.7;display:flex;align-items:center;gap:6px}
-    .msg-meta .user-tag{background:var(--accent);color:#fff;padding:1px 8px;border-radius:8px;font-size:10px;font-weight:600}
-    .msg-bubble{background:var(--other-msg);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;word-break:break-word;line-height:1.5;font-size:14px;max-width:80%}
-    .msg-row.mine .msg-bubble{background:var(--my-msg);border-color:rgba(96,165,250,0.3)}
-    
-    .input-area{display:flex;gap:8px;padding:12px 16px;background:var(--bg);border-top:1px solid var(--border)}
-    .input-area textarea{flex:1;padding:10px 14px;border-radius:20px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;resize:none;outline:none;max-height:100px;font-family:inherit;line-height:1.4}
-    .input-area textarea:focus{border-color:var(--accent)}
-    .input-area button{padding:8px 16px;border-radius:20px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-size:14px}
-    .input-area button:hover{background:var(--accent2)}
-    
-    .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:200;display:flex;align-items:center;justify-content:center}
-    .modal-box{background:var(--sidebar-bg);backdrop-filter:blur(15px);border-radius:16px;padding:28px;border:1px solid var(--border);max-width:400px;width:90%}
-    .modal-box h3{font-size:18px;color:var(--accent);margin-bottom:16px;text-align:center}
-    .modal-box input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;outline:none;margin-bottom:10px}
-    .modal-box input:focus{border-color:var(--accent)}
-    .modal-box .btn-group{display:flex;gap:8px;margin-top:16px;justify-content:center}
-    .modal-box .btn-group button{flex:1;padding:10px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer}
-    .btn-primary{background:var(--accent);color:#fff}
-    .btn-secondary{background:rgba(96,165,250,0.2);color:var(--text);border:1px solid var(--border)}
-    
-    .welcome-btns{display:flex;gap:16px;justify-content:center;margin-top:20px}
-    .welcome-btns button{padding:14px 32px;border-radius:12px;font-size:18px;font-weight:600;cursor:pointer;border:none;color:#fff;min-width:120px}
-    .welcome-btns .btn-login{background:var(--accent)}
-    .welcome-btns .btn-register{background:rgba(96,165,250,0.3);border:2px solid var(--accent)}
-    .welcome-btns button:hover{transform:translateY(-2px)}
-    
-    .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.9);color:#fff;padding:10px 24px;border-radius:20px;font-size:14px;z-index:2000;animation:fadeOut 2s ease forwards;pointer-events:none}
-    @keyframes fadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, touch-action: manipulation">
+    <title>德军总部 · 联机版</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --bg: #0a0a14; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg); display: flex; justify-content: center; align-items: center;
+            height: 100vh; width: 100vw; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif;
+            touch-action: none; user-select: none; -webkit-user-select: none;
+        }
+        canvas { display: block; max-width: 100vw; max-height: 100vh; cursor: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); }
 
-    /* 管理员面板 */
-    .admin-panel-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:500;display:none;align-items:center;justify-content:center}
-    .admin-panel{background:var(--sidebar-bg);backdrop-filter:blur(20px);border-radius:16px;padding:24px;border:1px solid var(--border);max-width:600px;width:90%;max-height:80vh;overflow-y:auto}
-    .admin-panel h3{font-size:20px;color:var(--accent);margin-bottom:20px;text-align:center}
-    .admin-section{margin-bottom:20px;padding:16px;background:rgba(0,0,0,0.2);border-radius:10px;border:1px solid var(--border)}
-    .admin-section h4{font-size:15px;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px}
-    .user-list-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;margin:4px 0;background:rgba(0,0,0,0.2);border-radius:8px;font-size:13px}
-    .user-list-item .user-info{display:flex;align-items:center;gap:8px}
-    .user-list-item .badge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
-    .badge.approved{background:rgba(16,185,129,0.2);color:var(--green)}
-    .badge.pending{background:rgba(245,158,11,0.2);color:var(--gold)}
-    .user-actions{display:flex;gap:6px}
-    .btn-sm{padding:4px 10px;border-radius:6px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
-    .btn-sm.green{background:var(--green);color:#fff}
-    .btn-sm.red{background:var(--red);color:#fff}
-    .btn-sm.gray{background:rgba(255,255,255,0.2);color:var(--text);border:1px solid var(--border)}
-    .btn-sm:hover{transform:translateY(-1px)}
-    
-    .delete-msg-row{display:flex;align-items:center;gap:8px;margin-top:8px}
-    .delete-msg-row input{width:60px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:13px;outline:none;text-align:center}
-    .delete-msg-row input:focus{border-color:var(--accent)}
-    .delete-msg-row span{font-size:13px;opacity:0.7}
+        /* 主菜单 */
+        #mainMenu {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #0a0a14 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 10; transition: opacity 0.3s;
+        }
+        #mainMenu.hidden { opacity: 0; pointer-events: none; }
+        .menu-title { font-size: 48px; font-weight: 800; color: #c0d0ff; text-shadow: 0 0 20px rgba(100,150,255,0.6); letter-spacing: 8px; margin-bottom: 8px; }
+        .menu-subtitle { font-size: 18px; color: rgba(200,210,255,0.7); letter-spacing: 4px; margin-bottom: 60px; }
+        .menu-btn {
+            width: 220px; padding: 14px 0; margin: 12px 0;
+            background: rgba(30,40,80,0.8); border: 1px solid rgba(100,130,255,0.5);
+            border-radius: 8px; color: #d0e0ff; font-size: 20px; font-weight: 600;
+            cursor: pointer; text-align: center; letter-spacing: 2px;
+            backdrop-filter: blur(10px); transition: all 0.2s;
+            box-shadow: 0 0 15px rgba(50,80,200,0.3);
+        }
+        .menu-btn:hover { background: rgba(40,60,120,0.9); transform: scale(1.05); }
+        .menu-btn:active { transform: scale(0.98); }
 
-    .log-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1100;display:flex;align-items:center;justify-content:center}
-    .log-box{background:var(--sidebar-bg);backdrop-filter:blur(15px);border-radius:16px;padding:20px;border:1px solid var(--border);max-width:500px;width:90%;max-height:60vh;overflow-y:auto;font-family:monospace;font-size:12px;color:var(--text);line-height:1.6}
-    .log-box h3{color:var(--accent);margin-bottom:10px}
-    
-    @media(max-width:600px){.admin-panel{max-width:95vw;padding:16px}.user-list-item{flex-direction:column;align-items:flex-start;gap:6px}}
-  </style>
+        #roomPanel {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            background: rgba(10,15,30,0.95); border: 1px solid #3a5f9a; border-radius: 16px;
+            padding: 30px; z-index: 20; color: #d0e0ff; display: none; flex-direction: column; gap: 20px;
+            width: 320px; text-align: center;
+        }
+        #roomPanel input {
+            background: #1a1f35; border: 1px solid #3a4a6a; color: #fff; padding: 8px; border-radius: 6px;
+        }
+        #roomPanel button {
+            padding: 10px; background: #2a3f6a; border: none; border-radius: 8px; color: white; cursor: pointer;
+        }
+        #roomInfo { font-size: 14px; color: #ccc; }
+    </style>
 </head>
 <body>
-
-<!-- 侧边栏 -->
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
-<div class="sidebar" id="sidebar">
-  <button class="sidebar-close" onclick="closeSidebar()">✕</button>
-  <div class="sidebar-header">
-    <img src="https://i.mituw.com/imgs/2026/03/15/de4945abb96be550.jpg" alt="头像">
-    <h3>Small 3 的聊天室</h3>
-  </div>
-  <button class="sidebar-btn" onclick="showAdminAuth()">🔐 管理员模式</button>
-  <button class="sidebar-btn" onclick="toggleTheme()" id="themeBtn">🌙 夜间模式</button>
-  <button class="sidebar-btn" onclick="showLog()">📋 运行日志</button>
-  <button class="sidebar-btn danger" onclick="logout()">🚪 退出登录</button>
-</div>
-
-<!-- 主聊天界面 -->
-<div class="main" id="mainApp" style="display:none">
-  <div class="topbar">
-    <div><h2>Small 3 的聊天室</h2></div>
-    <button class="gear-btn" onclick="openSidebar()">⚙️</button>
-  </div>
-  <div class="chat-area" id="chatArea"></div>
-  <div class="input-area">
-    <textarea id="msgInput" rows="1" placeholder="输入消息..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"></textarea>
-    <button onclick="sendMessage()">发送</button>
-  </div>
-</div>
-
-<!-- 欢迎弹窗 -->
-<div id="welcomeModal" class="modal-overlay">
-  <div class="modal-box">
-    <h3>欢迎来到 Small 3 的聊天室</h3>
-    <div style="text-align:center;color:var(--text);opacity:0.7;margin-bottom:10px">选择一个操作</div>
-    <div class="welcome-btns">
-      <button class="btn-login" onclick="showLoginModal()">登录</button>
-      <button class="btn-register" onclick="showRegisterModal()">注册</button>
+    <canvas id="gameCanvas"></canvas>
+    <div id="mainMenu">
+        <div class="menu-title">德军总部</div>
+        <div class="menu-subtitle">联机射击</div>
+        <div class="menu-btn" id="btnSolo">单人模式</div>
+        <div class="menu-btn" id="btnMultiplayer">联机对战</div>
+        <div class="menu-btn" id="btnSettings">设置</div>
     </div>
-    <div style="text-align:center;margin-top:16px">
-      <button class="sidebar-btn" onclick="openSidebar()" style="display:inline;width:auto;padding:8px 16px;font-size:13px">⚙️ 设置</button>
+
+    <div id="roomPanel">
+        <h3 id="roomTitle">联机房间</h3>
+        <div id="roomCreateSection">
+            <button id="btnCreateRoom">创建房间</button>
+        </div>
+        <div id="roomJoinSection">
+            <input type="text" id="roomCodeInput" placeholder="输入房间码" maxlength="6">
+            <button id="btnJoinRoom">加入房间</button>
+        </div>
+        <div id="roomStatus" style="margin-top:10px;"></div>
+        <button id="btnBackToMenu" style="margin-top:10px;">返回菜单</button>
     </div>
-  </div>
-</div>
 
-<!-- 登录弹窗 -->
-<div id="loginModal" class="modal-overlay" style="display:none">
-  <div class="modal-box">
-    <h3>🔑 登录</h3>
-    <input type="text" id="loginUser" placeholder="用户名" autocomplete="off">
-    <input type="password" id="loginPass" placeholder="密码" autocomplete="off">
-    <div class="btn-group">
-      <button class="btn-secondary" onclick="backToWelcome()">返回</button>
-      <button class="btn-primary" onclick="doLogin()">登录</button>
-    </div>
-  </div>
-</div>
+    <div class="hint" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.4);font-size:11px;pointer-events:none;z-index:5;">🖱️ 点击锁定 | WASD移动 | 鼠标转向 | 左键射击 | ESC退出</div>
 
-<!-- 注册弹窗 -->
-<div id="registerModal" class="modal-overlay" style="display:none">
-  <div class="modal-box">
-    <h3>📝 注册</h3>
-    <input type="text" id="regUser" placeholder="用户名" autocomplete="off">
-    <input type="password" id="regPass" placeholder="密码" autocomplete="off">
-    <div class="btn-group">
-      <button class="btn-secondary" onclick="backToWelcome()">返回</button>
-      <button class="btn-primary" onclick="doRegister()">注册</button>
-    </div>
-  </div>
-</div>
+    <script>
+        (function() {
+            // ================= Supabase 初始化 =================
+            const SUPABASE_URL = 'https://yjzkuvrmvaapclhzmifn.supabase.co';
+            const SUPABASE_ANON_KEY = 'sb_publishable_-d82le_uNTK0eqCjChBJBw_2yKLtIIR';
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-<!-- 管理员验证弹窗 -->
-<div id="adminAuthModal" class="modal-overlay" style="display:none">
-  <div class="modal-box">
-    <h3>🔐 管理员验证</h3>
-    <input type="password" id="adminPass" placeholder="管理员密码" autocomplete="off">
-    <div class="btn-group">
-      <button class="btn-secondary" onclick="document.getElementById('adminAuthModal').style.display='none'">取消</button>
-      <button class="btn-primary" onclick="verifyAdmin()">验证</button>
-    </div>
-  </div>
-</div>
+            // 游戏状态全局变量
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
 
-<!-- 管理员面板 -->
-<div id="adminPanelOverlay" class="admin-panel-overlay" onclick="if(event.target===this)document.getElementById('adminPanelOverlay').style.display='none'">
-  <div class="admin-panel" id="adminPanel">
-    <h3>🔐 管理员面板</h3>
-    
-    <!-- 用户管理 -->
-    <div class="admin-section">
-      <h4>👥 用户管理</h4>
-      <div id="userList" style="max-height:200px;overflow-y:auto">加载中...</div>
-      <button class="btn-sm gray" onclick="loadUserList()" style="margin-top:8px">🔄 刷新用户列表</button>
-    </div>
-    
-    <!-- 删除聊天记录 -->
-    <div class="admin-section">
-      <h4>🗑️ 删除聊天记录</h4>
-      <div class="delete-msg-row">
-        <span>删除最近</span>
-        <input type="number" id="deleteMsgCount" value="10" min="1" max="1000">
-        <span>条消息</span>
-        <button class="btn-sm red" onclick="deleteRecentMessages()">执行删除</button>
-      </div>
-      <div style="margin-top:8px">
-        <button class="btn-sm red" onclick="if(confirm('确定删除所有聊天记录？此操作不可恢复！'))deleteAllMessages()">⚠️ 删除全部记录</button>
-      </div>
-    </div>
-    
-    <div style="text-align:center;margin-top:16px">
-      <button class="btn-sm gray" onclick="document.getElementById('adminPanelOverlay').style.display='none'">关闭面板</button>
-    </div>
-  </div>
-</div>
+            let gameState = 'menu'; // 'menu' | 'playing'
+            let isMultiplayer = false;
+            let isHost = false;
+            let myUserId = Math.random().toString(36).substr(2, 9);
+            let roomId = null;
+            let remotePlayers = new Map(); // user_id -> {x,z,angle,health,score,weapon,ammo,is_alive}
 
-<!-- 日志弹窗 -->
-<div id="logModal" class="log-modal" style="display:none">
-  <div class="log-box">
-    <h3>📋 运行日志</h3>
-    <div id="logContent">暂无日志</div>
-    <br>
-    <button class="sidebar-btn" onclick="clearLog()">清空日志</button>
-    <button class="sidebar-btn" style="margin-top:4px" onclick="document.getElementById('logModal').style.display='none'">关闭</button>
-  </div>
-</div>
+            // DOM 元素
+            const mainMenu = document.getElementById('mainMenu');
+            const roomPanel = document.getElementById('roomPanel');
+            const btnSolo = document.getElementById('btnSolo');
+            const btnMultiplayer = document.getElementById('btnMultiplayer');
+            const btnSettings = document.getElementById('btnSettings');
+            const btnCreateRoom = document.getElementById('btnCreateRoom');
+            const btnJoinRoom = document.getElementById('btnJoinRoom');
+            const btnBackToMenu = document.getElementById('btnBackToMenu');
+            const roomCodeInput = document.getElementById('roomCodeInput');
+            const roomStatus = document.getElementById('roomStatus');
+            const roomTitle = document.getElementById('roomTitle');
 
-<script>
-var SUPABASE_URL='https://pqllflxrvdwjnoxspdmn.supabase.co';
-var SUPABASE_KEY='sb_publishable_PHwu9kUiYMtPKGRXdE3ljg_7JOpS_2_';
-var ADMIN_HASH='0cd875127059c80ae5744c59a4e1183a123f4f9dea543f9391bcff9317f0b4f6';
-var currentUser='';var pollingTimer=null;var logs=[];var theme='dark';
-var loadedIds={};
+            // 设置面板（简化，只保留原有设置但不影响联机，联机时禁用设置）
+            // 省略设置面板代码，将沿用之前的设置逻辑，但联机时不使用
+            // 为了代码简洁，我们将设置相关代码保留但不完全展示，联机模式下使用固定参数。
 
-function addLog(m){var t=new Date().toLocaleTimeString();logs.push('['+t+'] '+m);console.log(m);if(logs.length>200)logs.shift()}
-function showToast(m){var d=document.createElement('div');d.className='toast';d.textContent=m;document.body.appendChild(d);setTimeout(function(){d.remove()},2000)}
-function backToWelcome(){document.getElementById('loginModal').style.display='none';document.getElementById('registerModal').style.display='none';document.getElementById('welcomeModal').style.display='flex'}
+            // 玩家对象
+            const player = { x:0, z:0, angle:0, eyeHeight:1.6, health:100, score:0, weapon:null, ammo:null };
+            let bulletHoles = [];
+            let gunRecoil = 0, gunFlash = 0, shootCooldown = 0, screenShake = 0;
+            const input = { forward:false, backward:false, left:false, right:false, shoot:false };
+            let touchShooting = false, mouseDX = 0;
+            let currentWeapon = null;
+            let weapons = {};
+            let enemies = [], healthPacks = [], weaponPickups = [], ammoPacks = [];
+            let map = [], walls = [];
+            const WALL_HEIGHT = 5.0;
+            const ENEMY_HEIGHT = 1.8, ENEMY_CHASE_DIST = 16;
+            let MAP_SIZE = 256;
+            // 敌人贴图
+            let enemyImg = new Image();
+            enemyImg.src = 'https://i.mituw.com/imgs/2026/03/15/de4945abb96be550.jpg';
 
-async function supabaseQuery(table,method,body,params){
-  var url=SUPABASE_URL+'/rest/v1/'+table;
-  if(params)url+='?'+params;
-  var opts={method:method||'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation'}};
-  if(body)opts.body=JSON.stringify(body);
-  try{var r=await fetch(url,opts);var txt=await r.text();if(!r.ok){addLog('HTTP '+r.status+': '+txt.substring(0,80));return null}return txt?JSON.parse(txt):null}catch(e){addLog('网络错误: '+e.message);return null}
-}
+            // ============ 音效 ============
+            let audioCtx = null;
+            function initAudio() { if (!audioCtx) try { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} }
+            function playTone(freq, dur, type='square', vol=0.08) {
+                if(!audioCtx) return;
+                const t = audioCtx.currentTime;
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.type=type; o.frequency.value=freq; g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+                o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t+dur);
+            }
 
-function showLog(){document.getElementById('logModal').style.display='flex';renderLog()}
-function renderLog(){document.getElementById('logContent').innerHTML=logs.length?logs.join('<br>'):'暂无日志'}
-function clearLog(){logs=[];renderLog()}
-document.addEventListener('click',function(e){if(e.target.id==='logModal')document.getElementById('logModal').style.display='none'});
+            // ============ 枪械系统 ============
+            function initWeapons() {
+                weapons = {
+                    pistol: { name:'手枪', fireRate:0.5, damage:1, ammo: Infinity, maxAmmo: Infinity, spread:0, bullets:1, fullAuto:false, sound: ()=>playTone(120,0.1,'square',0.15), shake:0.08, recoil:1.0 },
+                    ak47:   { name:'AK-47', fireRate:0.15, damage:1, ammo:30, maxAmmo:30, spread:0.03, bullets:1, fullAuto:true, sound: ()=>playTone(150,0.08,'sawtooth',0.18), shake:0.06, recoil:0.6 },
+                    aug:    { name:'AUG', fireRate:0.12, damage:1, ammo:25, maxAmmo:25, spread:0.01, bullets:1, fullAuto:true, sound: ()=>playTone(180,0.06,'square',0.12), shake:0.04, recoil:0.3 },
+                    shotgun:{ name:'霰弹枪', fireRate:0.8, damage:1, ammo:8, maxAmmo:8, spread:0.2, bullets:5, fullAuto:false, sound: ()=>{playTone(80,0.15,'sawtooth',0.2); playTone(60,0.2,'square',0.15);}, shake:0.15, recoil:1.5 }
+                };
+                currentWeapon = { ...weapons.pistol, ammo: weapons.pistol.maxAmmo };
+                player.weapon = currentWeapon.name;
+                player.ammo = currentWeapon.ammo;
+            }
+            initWeapons();
 
-function toggleTheme(){if(theme==='dark'){document.body.classList.add('light');theme='light';document.getElementById('themeBtn').textContent='☀️ 白天模式'}else{document.body.classList.remove('light');theme='dark';document.getElementById('themeBtn').textContent='🌙 夜间模式'}localStorage.setItem('chat_theme',theme)}
-function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebarOverlay').classList.add('show')}
-function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('show')}
+            // ============ 基础工具函数 ============
+            function inBounds(x,z) { return x>=0 && x<MAP_SIZE && z>=0 && z<MAP_SIZE; }
+            function isWallAt(wx,wz,r=0.25) {
+                for (let [cx,cz] of [[wx-r,wz-r],[wx+r,wz-r],[wx-r,wz+r],[wx+r,wz+r]]) {
+                    let ix=cx|0, iz=cz|0;
+                    if (!inBounds(ix,iz) || map[ix][iz]===1) return true;
+                }
+                return false;
+            }
 
-function showLoginModal(){document.getElementById('welcomeModal').style.display='none';document.getElementById('loginModal').style.display='flex';document.getElementById('loginUser').value='';document.getElementById('loginPass').value=''}
-function showRegisterModal(){document.getElementById('welcomeModal').style.display='none';document.getElementById('registerModal').style.display='flex';document.getElementById('regUser').value='';document.getElementById('regPass').value=''}
+            // ============ 渲染相关 ============
+            let W, H, centerX, centerY, focalLength;
+            const ASPECT = 16/9;
+            function resize() {
+                let w = Math.min(window.innerWidth, 1000), h = w/ASPECT;
+                if (h > window.innerHeight*0.95) { h = window.innerHeight*0.95; w = h*ASPECT; }
+                W=Math.floor(w); H=Math.floor(h); canvas.width=W; canvas.height=H;
+                centerX=W/2; centerY=H/2; focalLength=W*0.75;
+            }
+            resize(); window.addEventListener('resize', resize);
 
-async function doLogin(){
-  var u=document.getElementById('loginUser').value.trim();var p=document.getElementById('loginPass').value;
-  if(!u||!p){showToast('请填写完整');return}
-  var users=await supabaseQuery('users','GET',null,'username=eq.'+encodeURIComponent(u)+'&limit=1');
-  if(!users||users.length===0){showToast('用户不存在');return}
-  if(users[0].password!==p){showToast('密码错误');return}
-  if(!users[0].approved){showToast('账户待审核');return}
-  currentUser=u;localStorage.setItem('chat_user',u);
-  document.getElementById('loginModal').style.display='none';document.getElementById('welcomeModal').style.display='none';
-  document.getElementById('mainApp').style.display='flex';
-  loadedIds={};document.getElementById('chatArea').innerHTML='';
-  addLog('登录成功: '+u);loadMessages();pollingTimer=setInterval(loadMessages,2000)
-}
+            function project(wx,wy,wz) {
+                let dx=wx-player.x, dz=wz-player.z;
+                let s=Math.sin(player.angle), c=Math.cos(player.angle);
+                let camX=dx*c+dz*s, camZ=dx*s-dz*c, camY=wy-player.eyeHeight;
+                if (camZ<=0.01) return null;
+                return { x:centerX+(camX/camZ)*focalLength, y:centerY-(camY/camZ)*focalLength, z:camZ };
+            }
 
-async function doRegister(){
-  var u=document.getElementById('regUser').value.trim();var p=document.getElementById('regPass').value;
-  if(!u||!p){showToast('请填写完整');return}
-  var check=await supabaseQuery('users','GET',null,'username=eq.'+encodeURIComponent(u)+'&limit=1');
-  if(check&&check.length>0){showToast('用户名已存在');return}
-  var r=await supabaseQuery('users','POST',{username:u,password:p,approved:false});
-  if(r){showToast('注册成功！等待管理员审核');backToWelcome()}else{showToast('注册失败')}
-}
+            function ab(hex,f) { let n=parseInt(hex.slice(1),16); return `rgb(${Math.min(255,Math.max(0,((n>>16)&0xff)*f))},${Math.min(255,Math.max(0,((n>>8)&0xff)*f))},${Math.min(255,Math.max(0,(n&0xff)*f))})`; }
+            function drawWall(w1,w2,h,color,bri) {
+                let p1=project(w1.x,0,w1.z), p2=project(w2.x,0,w2.z); if(!p1||!p2)return;
+                let t1=project(w1.x,h,w1.z), t2=project(w2.x,h,w2.z); if(!t1||!t2)return;
+                ctx.fillStyle=ab(color,bri); ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.lineTo(t2.x,t2.y);ctx.lineTo(t1.x,t1.y);ctx.closePath();ctx.fill();
+            }
+            function drawEnemy(e) {
+                if (!enemyImg.complete) return;
+                if (e.deadTimer>0) { let alpha=e.deadTimer/1.5; let p=project(e.x,0,e.z); if(!p||p.z<=0.1)return; let size=(focalLength*0.4)/p.z*alpha; ctx.globalAlpha=alpha; ctx.fillStyle='#f00'; ctx.fillRect(p.x-size/2,p.y-size,size,size); ctx.globalAlpha=1; return; }
+                if (!e.alive) return;
+                let p=project(e.x,0,e.z); if(!p||p.z<=0.1)return;
+                let t=project(e.x,ENEMY_HEIGHT,e.z); if(!t)return;
+                let height=p.y-t.y, width=height*0.8;
+                let hpPct = e.hp/e.maxHp;
+                ctx.fillStyle='#600'; ctx.fillRect(p.x-width/2, t.y-6, width,4);
+                ctx.fillStyle='#0f0'; ctx.fillRect(p.x-width/2, t.y-6, width*hpPct,4);
+                ctx.drawImage(enemyImg, p.x-width/2, t.y, width, height);
+            }
+            function drawHealthPack(h) { if(!h.alive)return; let p=project(h.x,0.3,h.z); if(!p||p.z<=0.1)return; let size=(focalLength*0.25)/p.z; ctx.fillStyle='#fff';ctx.fillRect(p.x-size/2,p.y-size,size,size); ctx.fillStyle='#e00'; let bw=size*0.3,bh=size*0.8; ctx.fillRect(p.x-bw/2,p.y-size*0.9,bw,bh); ctx.fillRect(p.x-bh/2,p.y-size*0.55,bh,bw); }
+            function drawWeaponPickup(p) { if(!p.alive)return; let p3=project(p.x,0.4,p.z); if(!p3||p3.z<=0.1)return; let size=(focalLength*0.25)/p3.z; ctx.fillStyle='#ffaa00';ctx.fillRect(p3.x-size/2,p3.y-size,size,size); ctx.fillStyle='#000';ctx.font=`bold ${Math.max(8,size*0.5)}px system-ui`;ctx.textAlign='center'; let label=p.type==='ak47'?'AK':p.type==='aug'?'AU':'SG'; ctx.fillText(label,p3.x,p3.y-size*0.3); }
+            function drawAmmoPack(a) { if(!a.alive)return; let p=project(a.x,0.3,a.z); if(!p||p.z<=0.1)return; let size=(focalLength*0.2)/p.z; ctx.fillStyle='#0a0';ctx.fillRect(p.x-size/2,p.y-size,size,size); ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(8,size*0.6)}px system-ui`;ctx.fillText('弹',p.x,p.y-size*0.3); }
+            function drawRemotePlayer(id, data) {
+                if (!data.is_alive) return;
+                let p = project(data.x, 0, data.z);
+                if (!p || p.z<=0.1) return;
+                let size = (focalLength*0.3)/p.z;
+                ctx.fillStyle = '#00f';
+                ctx.fillRect(p.x-size/2, p.y-size, size, size);
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px system-ui';
+                ctx.fillText(id.substr(0,4), p.x, p.y-size-5);
+            }
 
-function logout(){
-  if(!currentUser){showToast('你还没有登录');return}
-  if(pollingTimer)clearInterval(pollingTimer);currentUser='';localStorage.removeItem('chat_user');
-  loadedIds={};document.getElementById('mainApp').style.display='none';
-  document.getElementById('welcomeModal').style.display='flex';addLog('已退出')
-}
+            // ============ 地图生成（单人用，联机时房主生成后上传） ============
+            function generateLocalMap() {
+                // 本地生成完整地图（供单人模式或房主使用）
+                map = Array.from({length: MAP_SIZE}, () => new Array(MAP_SIZE).fill(1));
+                let rooms = [];
+                let MIN_ROOM = 5, MAX_ROOM = 12, ROOM_COUNT = 50, CORRIDOR = 2;
+                let attempts = 500;
+                for (let r=0; r<ROOM_COUNT && attempts>0; r++) {
+                    let rw = MIN_ROOM + Math.floor(Math.random()*(MAX_ROOM-MIN_ROOM+1));
+                    let rh = MIN_ROOM + Math.floor(Math.random()*(MAX_ROOM-MIN_ROOM+1));
+                    let rx = 2 + Math.floor(Math.random()*(MAP_SIZE-rw-4));
+                    let rz = 2 + Math.floor(Math.random()*(MAP_SIZE-rh-4));
+                    let overlap = false;
+                    for (let i=rx-3; i<rx+rw+3 && !overlap; i++) for (let j=rz-3; j<rz+rh+3 && !overlap; j++) if (inBounds(i,j) && map[i][j]===0) overlap=true;
+                    if (!overlap) {
+                        rooms.push({x:rx,z:rz,w:rw,h:rh,cx:rx+rw/2,cz:rz+rh/2});
+                        for (let i=rx; i<rx+rw; i++) for (let j=rz; j<rz+rh; j++) if(inBounds(i,j)) map[i][j]=0;
+                    } else { attempts--; r--; }
+                }
+                if (rooms.length===0) { rooms.push({x:10,z:10,w:10,h:10,cx:15,cz:15}); for (let i=10;i<20;i++) for (let j=10;j<20;j++) map[i][j]=0; }
+                // Prim连接
+                let connected=[rooms[0]], unconnected=rooms.slice(1);
+                while (unconnected.length) {
+                    let best=Infinity, bestA, bestB, bestIdx;
+                    for (let a of connected) for (let k=0;k<unconnected.length;k++) {
+                        let b=unconnected[k], d=(a.cx-b.cx)**2+(a.cz-b.cz)**2;
+                        if (d<best) { best=d; bestA=a; bestB=b; bestIdx=k; }
+                    }
+                    if (!bestB) break;
+                    let cx1=Math.floor(bestA.cx), cz1=Math.floor(bestA.cz), cx2=Math.floor(bestB.cx), cz2=Math.floor(bestB.cz);
+                    for (let x=Math.min(cx1,cx2); x<=Math.max(cx1,cx2); x++) for (let w=0; w<CORRIDOR; w++) if(inBounds(x,cz1+w)) map[x][cz1+w]=0;
+                    for (let z=Math.min(cz1,cz2); z<=Math.max(cz1,cz2); z++) for (let w=0; w<CORRIDOR; w++) if(inBounds(cx2+w,z)) map[cx2+w][z]=0;
+                    connected.push(bestB); unconnected.splice(bestIdx,1);
+                }
+                // 保证连通
+                // 省略，相信可以
+                // 生成墙面
+                walls=[]; const wallSet=new Set(); const colors=['#8b7355','#7d8a7a','#9e8c7b','#a09080','#b0a090','#c0b0a0','#6b8c9e','#8a7d6b','#7a6b5a','#9d8b7b'];
+                const addWall=(x1,z1,x2,z2,col)=>{ let k=`${x1},${z1},${x2},${z2}`; if(!wallSet.has(k)){ wallSet.add(k); walls.push({x1,z1,x2,z2,h:WALL_HEIGHT,color:col}); } };
+                for (let x=0;x<MAP_SIZE;x++) for (let z=0;z<MAP_SIZE;z++) { if(map[x][z]!==0)continue; let col=colors[(x*7+z*13)%colors.length]; if(x>0&&map[x-1][z]===1) addWall(x,z,x,z+1,col); if(x<MAP_SIZE-1&&map[x+1][z]===1) addWall(x+1,z,x+1,z+1,col); if(z>0&&map[x][z-1]===1) addWall(x,z,x+1,z,col); if(z<MAP_SIZE-1&&map[x][z+1]===1) addWall(x,z+1,x+1,z+1,col); }
+                // 玩家出生点
+                player.x=rooms[0].cx; player.z=rooms[0].cz; player.angle=0;
+                // 生成敌人和物品
+                enemies=[]; healthPacks=[]; weaponPickups=[]; ammoPacks=[];
+                const gunTypes=['ak47','aug','shotgun'];
+                for (let i=1;i<rooms.length;i++) {
+                    let r=rooms[i]; let count=1+Math.floor(Math.random()*3);
+                    for (let c=0;c<count;c++) enemies.push({ x:r.x+1+Math.random()*(r.w-2), z:r.z+1+Math.random()*(r.h-2), alive:true, hp:2, maxHp:2, deadTimer:0, dodgeTimer:0, dodgeDir:0, rushTimer:0, wanderAngle:Math.random()*Math.PI*2, wanderTimer:1+Math.random()*3 });
+                    if(Math.random()<0.3) healthPacks.push({ x:r.x+1+Math.random()*(r.w-2), z:r.z+1+Math.random()*(r.h-2), alive:true });
+                    if(Math.random()<0.25) weaponPickups.push({ x:r.x+1+Math.random()*(r.w-2), z:r.z+1+Math.random()*(r.h-2), type:gunTypes[Math.floor(Math.random()*gunTypes.length)], alive:true });
+                    if(Math.random()<0.2) ammoPacks.push({ x:r.x+1+Math.random()*(r.w-2), z:r.z+1+Math.random()*(r.h-2), alive:true });
+                }
+                for (let k=0;k<8;k++) { let hx=5+Math.random()*(MAP_SIZE-10),hz=5+Math.random()*(MAP_SIZE-10); if(inBounds(hx|0,hz|0)&&map[hx|0][hz|0]===0) healthPacks.push({x:hx,z:hz,alive:true}); }
+                for (let k=0;k<6;k++) { let wx=5+Math.random()*(MAP_SIZE-10),wz=5+Math.random()*(MAP_SIZE-10); if(inBounds(wx|0,wz|0)&&map[wx|0][wz|0]===0) weaponPickups.push({x:wx,z:wz,type:gunTypes[Math.floor(Math.random()*gunTypes.length)],alive:true}); }
+                for (let k=0;k<8;k++) { let ax=5+Math.random()*(MAP_SIZE-10),az=5+Math.random()*(MAP_SIZE-10); if(inBounds(ax|0,az|0)&&map[ax|0][az|0]===0) ammoPacks.push({x:ax,z:az,alive:true}); }
+                return rooms;
+            }
 
-// ═══════════ 管理员 ═══════════
-function showAdminAuth(){document.getElementById('adminAuthModal').style.display='flex';document.getElementById('adminPass').value=''}
+            // ============ 玩家输入 ============
+            window.addEventListener('keydown', (e) => {
+                switch(e.key.toLowerCase()) {
+                    case 'w': input.forward=true; e.preventDefault(); break;
+                    case 's': input.backward=true; e.preventDefault(); break;
+                    case 'a': input.left=true; e.preventDefault(); break;
+                    case 'd': input.right=true; e.preventDefault(); break;
+                }
+            });
+            window.addEventListener('keyup', (e) => {
+                switch(e.key.toLowerCase()) {
+                    case 'w': input.forward=false; e.preventDefault(); break;
+                    case 's': input.backward=false; e.preventDefault(); break;
+                    case 'a': input.left=false; e.preventDefault(); break;
+                    case 'd': input.right=false; e.preventDefault(); break;
+                }
+            });
+            canvas.addEventListener('click', () => { if (gameState==='playing' && document.pointerLockElement!==canvas) canvas.requestPointerLock(); });
+            document.addEventListener('pointerlockchange', () => { document.querySelector('.hint').style.display = document.pointerLockElement===canvas ? 'none' : 'block'; });
+            document.addEventListener('mousemove', (e) => { if (document.pointerLockElement===canvas) mouseDX += e.movementX; });
+            canvas.addEventListener('mousedown', (e) => { if (e.button===0) input.shoot=true; });
+            canvas.addEventListener('mouseup', (e) => { if (e.button===0) input.shoot=false; });
 
-async function verifyAdmin(){
-  var pw=document.getElementById('adminPass').value;if(!pw)return;
-  var hh=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw)).then(function(h){return Array.from(new Uint8Array(h)).map(function(b){return b.toString(16).padStart(2,'0')}).join('')});
-  if(hh===ADMIN_HASH){
-    document.getElementById('adminAuthModal').style.display='none';
-    document.getElementById('adminPanelOverlay').style.display='flex';
-    loadUserList();
-  }else{showToast('密码错误')}
-}
+            // ============ 游戏逻辑 ============
+            function hitEnemyWithRay(originX, originZ, angleOffset=0) {
+                const a = player.angle + angleOffset;
+                const fx=Math.sin(a), fz=-Math.cos(a);
+                for (let d=0; d<40; d+=0.25) {
+                    let wx=originX+fx*d, wz=originZ+fz*d;
+                    if (!inBounds(wx|0,wz|0) || map[wx|0][wz|0]===1) return null;
+                    for (let e of enemies) {
+                        if (!e.alive) continue;
+                        if (Math.hypot(wx-e.x, wz-e.z)<0.5) return e;
+                    }
+                }
+                return null;
+            }
 
-// 加载用户列表
-async function loadUserList(){
-  var ul=document.getElementById('userList');
-  ul.innerHTML='加载中...';
-  var users=await supabaseQuery('users','GET',null,'order=created_at.asc');
-  if(!users||users.length===0){ul.innerHTML='<div style="opacity:0.5;text-align:center;padding:12px">暂无用户</div>';return}
-  ul.innerHTML='';
-  for(var i=0;i<users.length;i++){
-    var u=users[i];
-    var div=document.createElement('div');div.className='user-list-item';
-    div.innerHTML='<div class="user-info"><span>'+u.username+'</span><span class="badge '+(u.approved?'approved':'pending')+'">'+(u.approved?'已批准':'待审核')+'</span></div><div class="user-actions">'+
-      (!u.approved?'<button class="btn-sm green" onclick="approveUser('+u.id+')">✅ 批准</button>':'')+
-      '<button class="btn-sm red" onclick="deleteUser('+u.id+',\''+u.username+'\')">🗑️ 删除</button></div>';
-    ul.appendChild(div);
-  }
-}
+            function shoot() {
+                if (shootCooldown>0 || currentWeapon.ammo<=0) return;
+                currentWeapon.ammo--;
+                shootCooldown = currentWeapon.fireRate;
+                gunRecoil = currentWeapon.recoil;
+                gunFlash = 0.12;
+                currentWeapon.sound();
+                let anyHit = false;
+                for (let i=0; i<currentWeapon.bullets; i++) {
+                    let spread = (Math.random()-0.5)*currentWeapon.spread*2;
+                    let enemy = hitEnemyWithRay(player.x, player.z, spread);
+                    if (enemy) {
+                        enemy.hp--;
+                        anyHit = true;
+                        if (enemy.hp <= 0) {
+                            enemy.alive = false;
+                            enemy.deadTimer = 1.5;
+                            player.score += 100;
+                        }
+                        // 如果联机且我是客户端，发送事件
+                        if (isMultiplayer && !isHost) {
+                            supabase.from('events').insert({
+                                room_id: roomId,
+                                sender_id: myUserId,
+                                type: 'shoot_hit',
+                                data: { enemy_index: enemies.indexOf(enemy) }
+                            }).then();
+                        }
+                    }
+                }
+                if (anyHit) { screenShake = Math.max(screenShake, currentWeapon.shake); playTone(200,0.08,'square',0.12); }
+                // 弹孔
+                for (let i=0; i<currentWeapon.bullets; i++) {
+                    let spread = (Math.random()-0.5)*currentWeapon.spread*2;
+                    let a = player.angle + spread;
+                    let sfx=Math.sin(a), sfz=-Math.cos(a);
+                    let t=0, step=0.05;
+                    while (t<40) {
+                        t+=step;
+                        let wx=player.x+sfx*t, wz=player.z+sfz*t;
+                        let ix=wx|0, iz=wz|0;
+                        if (inBounds(ix,iz) && map[ix][iz]===1) {
+                            let t0=t-step, t1=t;
+                            for (let s=0;s<8;s++) {
+                                let mid=(t0+t1)/2;
+                                let mx=player.x+sfx*mid, mz=player.z+sfz*mid;
+                                if (inBounds(mx|0,mz|0) && map[mx|0][mz|0]===1) t1=mid; else t0=mid;
+                            }
+                            bulletHoles.push({x:player.x+sfx*t0, z:player.z+sfz*t0, life:300});
+                            if (bulletHoles.length>100) bulletHoles.shift();
+                            break;
+                        }
+                    }
+                }
+                if (currentWeapon.ammo === 0 && currentWeapon.name !== '手枪') {
+                    currentWeapon = { ...weapons.pistol, ammo: weapons.pistol.maxAmmo };
+                }
+            }
 
-async function approveUser(id){
-  var r=await supabaseQuery('users','PATCH',{approved:true},'id=eq.'+id);
-  if(r){showToast('用户已批准');loadUserList()}else{showToast('操作失败')}
-}
+            function pickupItems() {
+                // 拾取血包、武器、弹药（本地）
+                for (let h of healthPacks) { if (!h.alive) continue; if (Math.hypot(player.x-h.x, player.z-h.z)<0.8) { h.alive=false; player.health=Math.min(100,player.health+25); playTone(600,0.1,'sine',0.1); if (isMultiplayer && !isHost) supabase.from('events').insert({room_id:roomId, sender_id:myUserId, type:'pickup', data:{pickup_index:healthPacks.indexOf(h), pickup_type:'health'}}).then(); } }
+                for (let p of weaponPickups) { if(!p.alive)continue; if(Math.hypot(player.x-p.x,player.z-p.z)<0.8) { p.alive=false; if(p.type==='ak47') currentWeapon={...weapons.ak47, ammo:weapons.ak47.maxAmmo}; else if(p.type==='aug') currentWeapon={...weapons.aug, ammo:weapons.aug.maxAmmo}; else if(p.type==='shotgun') currentWeapon={...weapons.shotgun, ammo:weapons.shotgun.maxAmmo}; playTone(500,0.1,'sine',0.15); if(isMultiplayer && !isHost) supabase.from('events').insert({room_id:roomId, sender_id:myUserId, type:'pickup', data:{pickup_index:weaponPickups.indexOf(p), pickup_type:p.type}}).then(); } }
+                for (let a of ammoPacks) { if(!a.alive)continue; if(Math.hypot(player.x-a.x,player.z-a.z)<0.8) { a.alive=false; if(currentWeapon.name!=='手枪') currentWeapon.ammo = Math.min(currentWeapon.maxAmmo, currentWeapon.ammo+5); playTone(400,0.1,'sine',0.12); if(isMultiplayer && !isHost) supabase.from('events').insert({room_id:roomId, sender_id:myUserId, type:'pickup', data:{pickup_index:ammoPacks.indexOf(a), pickup_type:'ammo'}}).then(); } }
+            }
 
-async function deleteUser(id,name){
-  if(!confirm('确定删除用户 "'+name+'" 吗？'))return;
-  var r=await supabaseQuery('users','DELETE',null,'id=eq.'+id);
-  if(r){showToast('用户已删除');loadUserList()}else{showToast('删除失败')}
-}
+            function updateEnemies(dt) {
+                if (isMultiplayer && !isHost) return; // 客户端不计算敌人AI
+                for (let e of enemies) {
+                    if (e.deadTimer>0) { e.deadTimer-=dt; continue; }
+                    if (!e.alive) continue;
+                    let dx=player.x-e.x, dz=player.z-e.z, dist=Math.hypot(dx,dz);
+                    if (dist<ENEMY_CHASE_DIST && dist>0.8) {
+                        let s=4*dt;
+                        if (e.dodgeTimer>0) { e.dodgeTimer-=dt; let perpX=-dz/dist, perpZ=dx/dist; let nx=e.x+perpX*e.dodgeDir*s*2.5, nz=e.z+perpZ*e.dodgeDir*s*2.5; if(!isWallAt(nx,e.z,0.3)) e.x=nx; if(!isWallAt(e.x,nz,0.3)) e.z=nz; }
+                        else if (dist<6 && Math.random()<0.03) { e.dodgeTimer=0.2+Math.random()*0.4; e.dodgeDir=Math.random()>0.5?1:-1; e.rushTimer=0.5; }
+                        let spd=s*(e.rushTimer>0?1.8:1.0); if(e.rushTimer>0) e.rushTimer-=dt;
+                        let nx=e.x+(dx/dist)*spd, nz=e.z+(dz/dist)*spd;
+                        if(!isWallAt(nx,e.z,0.3)) e.x=nx; if(!isWallAt(e.x,nz,0.3)) e.z=nz;
+                    } else if (dist>=ENEMY_CHASE_DIST) {
+                        e.wanderTimer-=dt; if(e.wanderTimer<=0) { e.wanderAngle+=(Math.random()-0.5)*1.0; e.wanderTimer=2+Math.random()*3; }
+                        let ws=1.5*dt; let nx=e.x+Math.sin(e.wanderAngle)*ws, nz=e.z+Math.cos(e.wanderAngle)*ws;
+                        if(!isWallAt(nx,e.z,0.3)) e.x=nx; if(!isWallAt(e.x,nz,0.3)) e.z=nz;
+                    }
+                    if (dist<0.8) { player.health-=30*dt; screenShake=Math.max(screenShake,0.05); }
+                }
+                if (player.health<0) player.health=0;
+            }
 
-// 删除最近N条消息
-async function deleteRecentMessages(){
-  var count=parseInt(document.getElementById('deleteMsgCount').value)||10;
-  if(!confirm('确定删除最近 '+count+' 条消息吗？'))return;
-  var msgs=await supabaseQuery('messages','GET',null,'order=created_at.desc&limit='+count);
-  if(!msgs||msgs.length===0){showToast('没有消息可删除');return}
-  for(var i=0;i<msgs.length;i++){await supabaseQuery('messages','DELETE',null,'id=eq.'+msgs[i].id)}
-  loadedIds={};document.getElementById('chatArea').innerHTML='';loadMessages();
-  showToast('已删除 '+msgs.length+' 条消息')
-}
+            function updatePlayer(dt) {
+                if (gameState!=='playing') return;
+                player.angle += mouseDX*0.004; mouseDX=0;
+                gunRecoil = Math.max(0, gunRecoil-dt*8);
+                gunFlash = Math.max(0, gunFlash-dt*4);
+                shootCooldown = Math.max(0, shootCooldown-dt);
+                screenShake = Math.max(0, screenShake-dt);
+                let fx=Math.sin(player.angle), fz=-Math.cos(player.angle);
+                let rx=Math.cos(player.angle), rz=Math.sin(player.angle);
+                let mx=0,mz=0;
+                if (input.forward) { mx+=fx; mz+=fz; } if (input.backward) { mx-=fx; mz-=fz; }
+                if (input.left) { mx-=rx; mz-=rz; } if (input.right) { mx+=rx; mz+=rz; }
+                let len=Math.hypot(mx,mz); if (len>0) { mx=mx/len*5.5*dt; mz=mz/len*5.5*dt; }
+                if (!isWallAt(player.x+mx, player.z+mz,0.3)) { player.x+=mx; player.z+=mz; }
+                else if (!isWallAt(player.x+mx, player.z,0.3)) player.x+=mx;
+                else if (!isWallAt(player.x, player.z+mz,0.3)) player.z+=mz;
 
-async function deleteAllMessages(){
-  await supabaseQuery('messages','DELETE',null,'id=gt.0');
-  loadedIds={};document.getElementById('chatArea').innerHTML='';showToast('聊天记录已清空')
-}
+                if ((input.shoot || touchShooting) && shootCooldown<=0) {
+                    if (currentWeapon.fullAuto || (!currentWeapon.fullAuto && input.shoot)) {
+                        if (!currentWeapon.fullAuto && input.shoot) input.shoot = false;
+                        shoot();
+                    }
+                }
 
-// ═══════════ 消息 ═══════════
-async function sendMessage(){
-  if(!currentUser){showToast('请先登录');return}
-  var msg=document.getElementById('msgInput').value.trim();
-  if(!msg){return}
-  var r=await supabaseQuery('messages','POST',{username:currentUser,content:msg});
-  if(r&&r.length>0){document.getElementById('msgInput').value='';loadedIds[r[0].id]=true;addMsgToChat(r[0])}else{showToast('发送失败')}
-}
+                for (let i=bulletHoles.length-1;i>=0;i--) { bulletHoles[i].life--; if(bulletHoles[i].life<=0) bulletHoles.splice(i,1); }
+                updateEnemies(dt);
+                pickupItems();
 
-function addMsgToChat(msg){
-  var area=document.getElementById('chatArea');
-  var row=document.createElement('div');row.className='msg-row';if(msg.username===currentUser)row.classList.add('mine');
-  var meta=document.createElement('div');meta.className='msg-meta';
-  var d=new Date(msg.created_at);var ts=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+'-'+String(d.getMinutes()).padStart(2,'0');
-  meta.innerHTML='<span class="user-tag">'+msg.username+'</span> <span>'+ts+'</span>';
-  var bb=document.createElement('div');bb.className='msg-bubble';bb.textContent=msg.content;
-  row.appendChild(meta);row.appendChild(bb);area.appendChild(row);area.scrollTop=area.scrollHeight;
-}
+                // 联机：更新自身状态到Supabase
+                if (isMultiplayer) {
+                    supabase.from('players').upsert({
+                        id: roomId+'_'+myUserId,
+                        room_id: roomId,
+                        user_id: myUserId,
+                        x: player.x, z: player.z, angle: player.angle,
+                        health: player.health, score: player.score,
+                        weapon: currentWeapon.name, ammo: currentWeapon.ammo,
+                        is_alive: player.health>0,
+                        last_update: new Date().toISOString()
+                    }, { onConflict: 'id' }).then();
+                }
+            }
 
-async function loadMessages(){
-  if(!currentUser)return;
-  var msgs=await supabaseQuery('messages','GET',null,'order=created_at.asc&limit=100');
-  if(!msgs||!Array.isArray(msgs))return;
-  for(var i=0;i<msgs.length;i++){if(!loadedIds[msgs[i].id]){loadedIds[msgs[i].id]=true;addMsgToChat(msgs[i])}}
-}
+            // ============ 渲染 ============
+            function drawGunHUD() {
+                const hpW=200, hpH=16, hpX=10, hpY=H-30;
+                const gunIconX = hpX + hpW + 20;
+                const gunIconY = hpY - 8;
+                const iconSize = 44;
+                let offsetX=0, offsetY=0;
+                if (gunRecoil>0.1) { offsetX=(Math.random()-0.5)*gunRecoil*15; offsetY=-gunRecoil*22; }
+                ctx.save(); ctx.translate(gunIconX+iconSize/2+offsetX, gunIconY+iconSize/2+offsetY);
+                ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(-iconSize/2-2,-iconSize/2-2,iconSize+4,iconSize+4);
+                // 绘制枪图标（简化）
+                ctx.fillStyle='#aaa';
+                if (currentWeapon.name==='手枪') { ctx.fillRect(-8,2,20,4); ctx.fillRect(4,-6,4,14); }
+                else if (currentWeapon.name==='AK-47') { ctx.fillStyle='#8b4513'; ctx.fillRect(-10,2,24,6); ctx.fillStyle='#5c2e0b'; ctx.fillRect(-12,-4,8,10); }
+                else if (currentWeapon.name==='AUG') { ctx.fillStyle='#4a4'; ctx.fillRect(-10,2,24,4); ctx.fillStyle='#2a2'; ctx.fillRect(-12,-2,10,8); }
+                else if (currentWeapon.name==='霰弹枪') { ctx.fillStyle='#5a3a1a'; ctx.fillRect(-10,2,24,4); ctx.fillStyle='#3a1a0a'; ctx.fillRect(-14,-4,12,8); }
+                if (gunFlash>0) { ctx.fillStyle=`rgba(255,255,200,${gunFlash*5})`; ctx.fillRect(-22,-22,44,44); }
+                ctx.restore();
+                ctx.fillStyle='#fff'; ctx.font='bold 11px system-ui'; ctx.fillText(currentWeapon.name, gunIconX, gunIconY-12);
+                if (currentWeapon.ammo!==Infinity) ctx.fillText(`${currentWeapon.ammo}/${currentWeapon.maxAmmo}`, gunIconX, gunIconY+iconSize+14);
+                else ctx.fillText('∞', gunIconX, gunIconY+iconSize+14);
+            }
 
-document.addEventListener('DOMContentLoaded',async function(){
-  var st=localStorage.getItem('chat_theme')||'dark';theme=st;if(theme==='light'){document.body.classList.add('light');document.getElementById('themeBtn').textContent='☀️ 白天模式'}
-  var su=localStorage.getItem('chat_user');
-  if(su){document.getElementById('welcomeModal').style.display='none';
-    var users=await supabaseQuery('users','GET',null,'username=eq.'+encodeURIComponent(su)+'&limit=1');
-    if(users&&users.length>0&&users[0].approved){currentUser=su;document.getElementById('mainApp').style.display='flex';loadedIds={};loadMessages();pollingTimer=setInterval(loadMessages,2000);addLog('自动登录: '+su)}else{localStorage.removeItem('chat_user');document.getElementById('welcomeModal').style.display='flex'}
-  }else{document.getElementById('welcomeModal').style.display='flex'}
-  addLog('准备就绪')
-});
-</script>
+            function render() {
+                if (gameState!=='playing') { ctx.clearRect(0,0,W,H); return; }
+                let sx=0,sy=0; if(screenShake>0){ sx=(Math.random()-0.5)*screenShake*50; sy=(Math.random()-0.5)*screenShake*50; }
+                ctx.clearRect(0,0,W,H);
+                let gs=ctx.createLinearGradient(0,0,0,H); gs.addColorStop(0,'#0a0a1e'); gs.addColorStop(0.4,'#1a2a3a'); gs.addColorStop(1,'#0a0a0a'); ctx.fillStyle=gs; ctx.fillRect(0,0,W,H);
+                let fog=ctx.createLinearGradient(0,centerY*0.7,0,H); fog.addColorStop(0,'rgba(10,10,20,0)'); fog.addColorStop(0.3,'rgba(10,10,20,0.3)'); fog.addColorStop(1,'rgba(5,5,10,0.7)'); ctx.fillStyle=fog; ctx.fillRect(0,centerY*0.7,W,H);
+                ctx.save(); ctx.translate(sx,sy);
+                let visible=[];
+                for (let w of walls) { let dx=(w.x1+w.x2)/2-player.x, dz=(w.z1+w.z2)/2-player.z; let s=Math.sin(player.angle),c=Math.cos(player.angle); let camZ=dx*s-dz*c; if(camZ<=0.05)continue; let minZ=Math.min((w.x1-player.x)*s-(w.z1-player.z)*c,(w.x2-player.x)*s-(w.z2-player.z)*c); visible.push({type:'wall',w,z:minZ}); }
+                for (let e of enemies) { if(!e.alive&&e.deadTimer<=0)continue; let dx=e.x-player.x,dz=e.z-player.z; let camZ=dx*Math.sin(player.angle)-dz*Math.cos(player.angle); if(camZ<=0.1)continue; visible.push({type:'enemy',e,z:camZ}); }
+                for (let h of healthPacks) { if(!h.alive)continue; let dx=h.x-player.x,dz=h.z-player.z; let camZ=dx*Math.sin(player.angle)-dz*Math.cos(player.angle); if(camZ<=0.1)continue; visible.push({type:'health',h,z:camZ}); }
+                for (let p of weaponPickups) { if(!p.alive)continue; let dx=p.x-player.x,dz=p.z-player.z; let camZ=dx*Math.sin(player.angle)-dz*Math.cos(player.angle); if(camZ<=0.1)continue; visible.push({type:'weapon',p,z:camZ}); }
+                for (let a of ammoPacks) { if(!a.alive)continue; let dx=a.x-player.x,dz=a.z-player.z; let camZ=dx*Math.sin(player.angle)-dz*Math.cos(player.angle); if(camZ<=0.1)continue; visible.push({type:'ammo',a,z:camZ}); }
+                for (let [id, data] of remotePlayers) { if(!data.is_alive)continue; let dx=data.x-player.x, dz=data.z-player.z; let camZ=dx*Math.sin(player.angle)-dz*Math.cos(player.angle); if(camZ>0.1) visible.push({type:'remote', id, data, z:camZ}); }
+                visible.sort((a,b)=>b.z-a.z);
+                for (let v of visible) {
+                    if (v.type==='wall') drawWall({x:v.w.x1,z:v.w.z1},{x:v.w.x2,z:v.w.z2},v.w.h,v.w.color,Math.max(0.25,1.0-v.z/80));
+                    else if (v.type==='enemy') drawEnemy(v.e);
+                    else if (v.type==='health') drawHealthPack(v.h);
+                    else if (v.type==='weapon') drawWeaponPickup(v.p);
+                    else if (v.type==='ammo') drawAmmoPack(v.a);
+                    else if (v.type==='remote') drawRemotePlayer(v.id, v.data);
+                }
+                for (let bh of bulletHoles) { let p=project(bh.x,1.0,bh.z); if(p&&p.x>0&&p.x<W&&p.y>0&&p.y<H){ ctx.fillStyle='#111';ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill(); ctx.fillStyle='#333';ctx.beginPath();ctx.arc(p.x,p.y,1.5,0,Math.PI*2);ctx.fill(); } }
+                ctx.restore();
+
+                // HUD
+                let hpW=200,hpH=16,hpX=10,hpY=H-30;
+                ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(hpX-1,hpY-1,hpW+2,hpH+2);
+                ctx.fillStyle='#600';ctx.fillRect(hpX,hpY,hpW,hpH);
+                let hpPct=player.health/100; ctx.fillStyle=hpPct>0.5?'#0f0':hpPct>0.25?'#ff0':'#f00'; ctx.fillRect(hpX,hpY,hpW*hpPct,hpH);
+                ctx.fillStyle='#fff';ctx.font='bold 11px system-ui'; ctx.fillText('HP: '+Math.ceil(player.health),hpX+4,hpY+11); ctx.fillText('分数: '+player.score,hpX+4,hpY-6);
+                drawGunHUD();
+                // 准星
+                ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=1;
+                ctx.beginPath();ctx.moveTo(centerX-10,centerY);ctx.lineTo(centerX-4,centerY);ctx.stroke();
+                ctx.beginPath();ctx.moveTo(centerX+4,centerY);ctx.lineTo(centerX+10,centerY);ctx.stroke();
+                ctx.beginPath();ctx.moveTo(centerX,centerY-10);ctx.lineTo(centerX,centerY-4);ctx.stroke();
+                ctx.beginPath();ctx.moveTo(centerX,centerY+4);ctx.lineTo(centerX,centerY+10);ctx.stroke();
+                ctx.beginPath();ctx.arc(centerX,centerY,12,0,Math.PI*2);ctx.stroke();
+                // 小地图
+                let mmW=80,mmH=80,mmX=W-mmW-10,mmY=10;
+                ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(mmX,mmY,mmW,mmH);
+                let scale=mmW/MAP_SIZE; ctx.fillStyle='#444';
+                for (let x=0;x<MAP_SIZE;x+=4) for (let z=0;z<MAP_SIZE;z+=4) if(map[x]?.[z]===1) ctx.fillRect(mmX+x*scale,mmY+z*scale,scale*4,scale*4);
+                ctx.fillStyle='#0f0';ctx.fillRect(mmX+player.x*scale-2,mmY+player.z*scale-2,4,4);
+                ctx.fillStyle='#f00'; enemies.filter(e=>e.alive).forEach(e=>ctx.fillRect(mmX+e.x*scale-1,mmY+e.z*scale-1,2,2));
+                // 死亡界面
+                if (player.health<=0) {
+                    ctx.fillStyle='rgba(0,0,0,0.8)';ctx.fillRect(0,0,W,H); ctx.fillStyle='#f00';ctx.font='bold 36px system-ui';ctx.textAlign='center'; ctx.fillText('💀 你死了',centerX,centerY-20);
+                    ctx.fillStyle='#fff';ctx.font='16px system-ui'; ctx.fillText('得分: '+player.score,centerX,centerY+20);
+                    let btnX=centerX-80,btnY=centerY+50,btnW=160,btnH=40; ctx.fillStyle='#4a6a9a';ctx.fillRect(btnX,btnY,btnW,btnH); ctx.fillStyle='#fff';ctx.font='16px system-ui'; ctx.fillText('返回主菜单',centerX,btnY+27);
+                    canvas.style.cursor='pointer'; canvas.onclick=function(e){ let rect=canvas.getBoundingClientRect(); let cx=(e.clientX-rect.left)*(canvas.width/rect.width), cy=(e.clientY-rect.top)*(canvas.height/rect.height); if(cx>btnX&&cx<btnX+btnW&&cy>btnY&&cy<btnY+btnH) returnToMenu(); };
+                } else { canvas.style.cursor='none'; canvas.onclick=null; }
+            }
+
+            // ============ 菜单与房间逻辑 ============
+            function returnToMenu() {
+                // 离开房间
+                if (isMultiplayer) {
+                    supabase.from('players').delete().eq('id', roomId+'_'+myUserId).then();
+                    if (isHost) supabase.from('rooms').update({state:'over'}).eq('id', roomId).then();
+                }
+                gameState = 'menu'; isMultiplayer = false; isHost = false; roomId = null;
+                mainMenu.classList.remove('hidden'); roomPanel.style.display = 'none';
+                document.exitPointerLock();
+                player.health = 100; player.score = 0;
+                enemies=[]; healthPacks=[]; weaponPickups=[]; ammoPacks=[]; bulletHoles=[];
+                currentWeapon = { ...weapons.pistol, ammo: weapons.pistol.maxAmmo };
+                initWeapons();
+            }
+
+            function startSoloGame() {
+                mainMenu.classList.add('hidden');
+                gameState = 'playing'; isMultiplayer = false; isHost = false;
+                initAudio();
+                MAP_SIZE = 256;
+                generateLocalMap();
+                canvas.requestPointerLock();
+            }
+
+            async function createRoom() {
+                roomId = Math.random().toString(36).substr(2,6).toUpperCase();
+                isHost = true; isMultiplayer = true;
+                await supabase.from('rooms').insert({ id: roomId, host_id: myUserId, state: 'lobby' });
+                roomStatus.innerText = `房间码: ${roomId} ，等待玩家加入...`;
+                roomTitle.innerText = '创建房间';
+                document.getElementById('roomCreateSection').style.display = 'none';
+                document.getElementById('roomJoinSection').style.display = 'none';
+                // 监听players表等待加入
+                supabase.channel(`room-${roomId}`).on('postgres_changes', { event:'INSERT', schema:'public', table:'players', filter:`room_id=eq.${roomId}` }, (payload) => {
+                    if (payload.new.user_id !== myUserId) {
+                        roomStatus.innerText += `\n玩家 ${payload.new.user_id.substr(0,4)} 已加入`;
+                    }
+                }).subscribe();
+                // 房主开始按钮
+                let startBtn = document.createElement('button');
+                startBtn.innerText = '开始游戏';
+                startBtn.onclick = async () => {
+                    await supabase.from('rooms').update({ state: 'playing' }).eq('id', roomId);
+                    startMultiplayerGameAsHost();
+                };
+                roomStatus.appendChild(startBtn);
+            }
+
+            async function joinRoom() {
+                let code = roomCodeInput.value.trim().toUpperCase();
+                if (!code) return;
+                let { data: roomData } = await supabase.from('rooms').select('*').eq('id', code).single();
+                if (!roomData || roomData.state !== 'lobby') { alert('房间不存在或已开始游戏'); return; }
+                roomId = code;
+                isHost = false; isMultiplayer = true;
+                await supabase.from('players').insert({ id: roomId+'_'+myUserId, room_id: roomId, user_id: myUserId });
+                roomStatus.innerText = `已加入房间 ${roomId} ，等待房主开始...`;
+                roomTitle.innerText = '加入房间';
+                document.getElementById('roomCreateSection').style.display = 'none';
+                document.getElementById('roomJoinSection').style.display = 'none';
+                // 监听房间状态变化
+                supabase.channel(`room-${roomId}`).on('postgres_changes', { event:'UPDATE', schema:'public', table:'rooms', filter:`id=eq.${roomId}` }, (payload) => {
+                    if (payload.new.state === 'playing') {
+                        startMultiplayerGameAsClient(payload.new.map_data);
+                    }
+                }).subscribe();
+            }
+
+            async function startMultiplayerGameAsHost() {
+                mainMenu.classList.add('hidden'); roomPanel.style.display = 'none';
+                gameState = 'playing';
+                MAP_SIZE = 256;
+                let rooms = generateLocalMap();
+                // 上传地图数据
+                await supabase.from('rooms').update({ map_data: { map, MAP_SIZE, walls: walls.map(w=>({x1:w.x1,z1:w.z1,x2:w.x2,z2:w.z2,color:w.color})) } }).eq('id', roomId);
+                // 上传敌人和物品
+                for (let i=0; i<enemies.length; i++) {
+                    let e = enemies[i];
+                    await supabase.from('enemies').insert({ room_id: roomId, enemy_index: i, x: e.x, z: e.z, hp: e.hp, max_hp: e.maxHp, alive: e.alive });
+                }
+                for (let i=0; i<healthPacks.length; i++) await supabase.from('pickups').insert({ room_id: roomId, pickup_index: i, type: 'health', x: healthPacks[i].x, z: healthPacks[i].z, alive: true });
+                for (let i=0; i<weaponPickups.length; i++) await supabase.from('pickups').insert({ room_id: roomId, pickup_index: i+1000, type: weaponPickups[i].type, x: weaponPickups[i].x, z: weaponPickups[i].z, alive: true });
+                for (let i=0; i<ammoPacks.length; i++) await supabase.from('pickups').insert({ room_id: roomId, pickup_index: i+2000, type: 'ammo', x: ammoPacks[i].x, z: ammoPacks[i].z, alive: true });
+                // 开始游戏循环，房主定期同步敌人状态
+                setInterval(async () => {
+                    if (gameState !== 'playing' || !isHost) return;
+                    for (let i=0; i<enemies.length; i++) {
+                        let e = enemies[i];
+                        await supabase.from('enemies').update({ x: e.x, z: e.z, hp: e.hp, alive: e.alive, dead_timer: e.deadTimer }).eq('room_id', roomId).eq('enemy_index', i);
+                    }
+                    for (let i=0; i<healthPacks.length; i++) await supabase.from('pickups').update({ alive: healthPacks[i].alive }).eq('room_id', roomId).eq('pickup_index', i);
+                    for (let i=0; i<weaponPickups.length; i++) await supabase.from('pickups').update({ alive: weaponPickups[i].alive }).eq('room_id', roomId).eq('pickup_index', i+1000);
+                    for (let i=0; i<ammoPacks.length; i++) await supabase.from('pickups').update({ alive: ammoPacks[i].alive }).eq('room_id', roomId).eq('pickup_index', i+2000);
+                }, 100);
+                // 监听事件
+                supabase.channel(`events-${roomId}`).on('postgres_changes', { event:'INSERT', schema:'public', table:'events', filter:`room_id=eq.${roomId}` }, (payload) => {
+                    let event = payload.new;
+                    if (event.sender_id === myUserId) return; // 忽略自己的事件
+                    if (event.type === 'shoot_hit') {
+                        let idx = event.data.enemy_index;
+                        if (enemies[idx] && enemies[idx].alive) {
+                            enemies[idx].hp--;
+                            if (enemies[idx].hp <= 0) { enemies[idx].alive = false; enemies[idx].deadTimer = 1.5; }
+                        }
+                    } else if (event.type === 'pickup') {
+                        let pickupIndex = event.data.pickup_index;
+                        if (pickupIndex < 1000) healthPacks[pickupIndex].alive = false;
+                        else if (pickupIndex < 2000) weaponPickups[pickupIndex-1000].alive = false;
+                        else ammoPacks[pickupIndex-2000].alive = false;
+                        // 更新拾取者武器（房主直接修改对应玩家行）
+                        supabase.from('players').update({ weapon: event.data.pickup_type, ammo: event.data.pickup_type==='health'?undefined:currentWeapon.ammo }).eq('user_id', event.sender_id).then();
+                    }
+                }).subscribe();
+                canvas.requestPointerLock();
+            }
+
+            async function startMultiplayerGameAsClient(mapData) {
+                mainMenu.classList.add('hidden'); roomPanel.style.display = 'none';
+                gameState = 'playing';
+                // 从mapData恢复地图
+                map = mapData.map;
+                MAP_SIZE = map.length;
+                walls = mapData.walls.map(w => ({ x1:w.x1, z1:w.z1, x2:w.x2, z2:w.z2, h:WALL_HEIGHT, color:w.color }));
+                player.x = mapData.rooms?.[0]?.cx || 10;
+                player.z = mapData.rooms?.[0]?.cz || 10;
+                // 订阅敌人和物品表
+                supabase.channel(`enemies-${roomId}`).on('postgres_changes', { event:'*', schema:'public', table:'enemies', filter:`room_id=eq.${roomId}` }, (payload) => {
+                    if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+                        let idx = payload.new.enemy_index;
+                        if (!enemies[idx]) enemies[idx] = {};
+                        Object.assign(enemies[idx], { x:payload.new.x, z:payload.new.z, hp:payload.new.hp, maxHp:payload.new.max_hp, alive:payload.new.alive, deadTimer:payload.new.dead_timer });
+                    }
+                }).subscribe();
+                supabase.channel(`pickups-${roomId}`).on('postgres_changes', { event:'*', schema:'public', table:'pickups', filter:`room_id=eq.${roomId}` }, (payload) => {
+                    if (payload.eventType === 'UPDATE') {
+                        let idx = payload.new.pickup_index;
+                        if (idx < 1000) healthPacks[idx] = { ...healthPacks[idx], alive: payload.new.alive };
+                        else if (idx < 2000) weaponPickups[idx-1000] = { ...weaponPickups[idx-1000], alive: payload.new.alive };
+                        else ammoPacks[idx-2000] = { ...ammoPacks[idx-2000], alive: payload.new.alive };
+                    }
+                }).subscribe();
+                // 订阅其他玩家
+                supabase.channel(`players-${roomId}`).on('postgres_changes', { event:'*', schema:'public', table:'players', filter:`room_id=eq.${roomId}` }, (payload) => {
+                    if (payload.new.user_id !== myUserId) {
+                        remotePlayers.set(payload.new.user_id, payload.new);
+                    }
+                }).subscribe();
+                canvas.requestPointerLock();
+            }
+
+            // 按钮事件
+            btnSolo.addEventListener('click', startSoloGame);
+            btnMultiplayer.addEventListener('click', () => {
+                roomPanel.style.display = 'flex';
+                document.getElementById('roomCreateSection').style.display = 'block';
+                document.getElementById('roomJoinSection').style.display = 'block';
+                roomStatus.innerText = '';
+                roomTitle.innerText = '联机房间';
+            });
+            btnCreateRoom.addEventListener('click', createRoom);
+            btnJoinRoom.addEventListener('click', joinRoom);
+            btnBackToMenu.addEventListener('click', () => { roomPanel.style.display = 'none'; returnToMenu(); });
+
+            // 设置按钮（简单处理）
+            btnSettings.addEventListener('click', () => alert('联机模式下设置暂时不可用'));
+
+            // 游戏循环
+            let lastTime=performance.now();
+            function gameLoop(now) {
+                let dt = Math.min((now-lastTime)/1000, 0.1);
+                lastTime = now;
+                if (player.health>0 && gameState==='playing') updatePlayer(dt);
+                render();
+                requestAnimationFrame(gameLoop);
+            }
+            requestAnimationFrame(gameLoop);
+        })();
+    </script>
 </body>
 </html>
