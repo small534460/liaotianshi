@@ -1175,158 +1175,242 @@
         // ================================================================
         let mp3AudioBuffer = null;
         let mp3BlobResult = null;
+function initMp3Converter() {
+    const fileInput = document.querySelector('#mp3Upload input');
+    const convertBtn = document.getElementById('mp3ConvertBtn');
+    const downloadBtn = document.getElementById('mp3DownloadBtn');
+    const bitrateSelect = document.getElementById('mp3Bitrate');
+    const progressFill = document.getElementById('mp3ProgressFill');
+    const statusText = document.getElementById('mp3Status');
+    const infoBox = document.getElementById('mp3Info');
 
-        function initMp3Converter() {
-            const fileInput = document.querySelector('#mp3Upload input');
-            const convertBtn = document.getElementById('mp3ConvertBtn');
-            const downloadBtn = document.getElementById('mp3DownloadBtn');
-            const bitrateSelect = document.getElementById('mp3Bitrate');
-            const progressFill = document.getElementById('mp3ProgressFill');
-            const statusText = document.getElementById('mp3Status');
-            const infoBox = document.getElementById('mp3Info');
+    let mp3AudioBuffer = null;
+    let mp3BlobResult = null;
+    let originalFileName = '';
 
-            mp3AudioBuffer = null;
-            mp3BlobResult = null;
-            downloadBtn.disabled = true;
+    convertBtn.disabled = true;
+    downloadBtn.disabled = true;
 
-            fileInput.addEventListener('change', async function() {
-                const file = this.files[0];
-                if (!file) return;
-                statusText.textContent = '🔄 正在解码音频...';
-                progressFill.style.width = '0%';
-                convertBtn.disabled = true;
-                downloadBtn.disabled = true;
-                mp3BlobResult = null;
-                try {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const audioContext = new(window.AudioContext || window.webkitAudioContext)();
-                    mp3AudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                    await audioContext.close();
-                    const duration = mp3AudioBuffer.duration.toFixed(1);
-                    const sampleRate = mp3AudioBuffer.sampleRate;
-                    const channels = mp3AudioBuffer.numberOfChannels;
-                    infoBox.innerHTML =
-                        `✅ <strong>解码成功</strong> · ${duration}秒 · ${sampleRate}Hz · ${channels}声道`;
-                    convertBtn.disabled = false;
-                    statusText.textContent = '就绪，可开始转换';
-                } catch (err) {
-                    infoBox.innerHTML = `❌ 解码失败：${err.message}`;
-                    statusText.textContent = '❌ 错误';
-                    console.error(err);
+    fileInput.addEventListener('change', async function () {
+        const file = this.files[0];
+        if (!file) return;
+        originalFileName = file.name;
+        statusText.textContent = '🔄 正在解码音频...';
+        progressFill.style.width = '0%';
+        convertBtn.disabled = true;
+        downloadBtn.disabled = true;
+        mp3BlobResult = null;
+        infoBox.innerHTML = '';
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            mp3AudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            await audioContext.close();
+
+            // 关键检查：前 1000 个样本是否全为零
+            const leftChannel = mp3AudioBuffer.getChannelData(0);
+            let isAllZero = true;
+            const checkLen = Math.min(1000, leftChannel.length);
+            for (let i = 0; i < checkLen; i++) {
+                if (leftChannel[i] !== 0) {
+                    isAllZero = false;
+                    break;
                 }
+            }
+
+            if (isAllZero) {
+                throw new Error('解码失败：音频数据为静音。浏览器可能不支持此音频编码，请尝试使用其他格式（如标准 WAV 16bit 44100Hz）。');
+            }
+
+            // 输出样本值，便于排查
+            console.log('✅ 解码成功，前10个样本:', Array.from(leftChannel.slice(0, 10)));
+
+            const duration = mp3AudioBuffer.duration.toFixed(1);
+            const sampleRate = mp3AudioBuffer.sampleRate;
+            const channels = mp3AudioBuffer.numberOfChannels;
+            infoBox.innerHTML = `✅ <strong>解码成功</strong> · ${duration}秒 · ${sampleRate}Hz · ${channels}声道`;
+            convertBtn.disabled = false;
+            statusText.textContent = '就绪，可开始转换';
+        } catch (err) {
+            infoBox.innerHTML = `❌ ${err.message}`;
+            statusText.textContent = '❌ 解码错误';
+            console.error(err);
+            mp3AudioBuffer = null;
+        }
+    });
+
+    convertBtn.addEventListener('click', async function () {
+        if (!mp3AudioBuffer) {
+            alert('请先上传音频文件');
+            return;
+        }
+        const bitrate = parseInt(bitrateSelect.value) || 320;
+        convertBtn.disabled = true;
+        downloadBtn.disabled = true;
+        statusText.textContent = '🔄 正在转换为 MP3...';
+        progressFill.style.width = '0%';
+
+        try {
+            // 长度警告
+            if (mp3AudioBuffer.duration > 600) {
+                if (!confirm('音频超过 10 分钟，转换可能导致浏览器卡顿，是否继续？')) {
+                    convertBtn.disabled = false;
+                    statusText.textContent = '已取消';
+                    return;
+                }
+            }
+
+            let processedBuffer = mp3AudioBuffer;
+            const SUPPORTED_RATES = [32000, 44100, 48000];
+            if (!SUPPORTED_RATES.includes(mp3AudioBuffer.sampleRate)) {
+                statusText.textContent = '🔄 正在重采样到 44100Hz...';
+                processedBuffer = await resampleToTarget(mp3AudioBuffer, 44100);
+            }
+
+            mp3BlobResult = await encodeToMp3(processedBuffer, bitrate, function (percent) {
+                progressFill.style.width = percent + '%';
+                statusText.textContent = `🔄 编码中 ${percent}%`;
             });
 
-            convertBtn.addEventListener('click', async function() {
-                if (!mp3AudioBuffer) { alert('请先上传音频文件'); return; }
-                const bitrate = parseInt(bitrateSelect.value);
-                convertBtn.disabled = true;
-                downloadBtn.disabled = true;
-                statusText.textContent = '🔄 正在转换为 MP3...';
-                progressFill.style.width = '0%';
-                try {
-                    if (mp3AudioBuffer.duration > 600) {
-                        if (!confirm('音频超过 10 分钟，转换可能导致浏览器卡顿，是否继续？')) {
-                            convertBtn.disabled = false;
-                            statusText.textContent = '已取消';
+            statusText.textContent = `✅ 转换完成！文件大小：${(mp3BlobResult.size / 1024).toFixed(1)} KB`;
+            downloadBtn.disabled = false;
+
+            // === 立即在页面内播放生成的 MP3，验证是否有声 ===
+            const audio = new Audio();
+            audio.src = URL.createObjectURL(mp3BlobResult);
+            audio.volume = 1.0;
+            audio.play()
+                .then(() => {
+                    console.log('🔊 页面内播放成功！你应该能听到声音。');
+                })
+                .catch(err => {
+                    console.error('播放失败（可能浏览器阻止自动播放）:', err);
+                    // 如果自动播放被阻止，可以弹窗提示用户手动点击播放
+                    const playBtn = document.createElement('button');
+                    playBtn.textContent = '▶️ 点击试听';
+                    playBtn.className = 'secondary-btn';
+                    playBtn.onclick = () => audio.play();
+                    infoBox.appendChild(playBtn);
+                });
+
+            // 清理 Object URL
+            audio.onended = () => URL.revokeObjectURL(audio.src);
+
+        } catch (err) {
+            statusText.textContent = '❌ 转换失败：' + err.message;
+            console.error(err);
+            convertBtn.disabled = false;
+        }
+    });
+
+    downloadBtn.addEventListener('click', function () {
+        if (!mp3BlobResult) {
+            alert('请先转换');
+            return;
+        }
+        const url = URL.createObjectURL(mp3BlobResult);
+        const a = document.createElement('a');
+        a.href = url;
+        // 生成下载文件名
+        const baseName = originalFileName.replace(/\.[^.]+$/, '');
+        a.download = `${baseName}_converted.mp3`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    });
+
+    // ========== 工具函数 ==========
+
+    async function resampleToTarget(buffer, targetRate) {
+        // 精确样本数
+        const targetLength = Math.round(buffer.length * targetRate / buffer.sampleRate);
+        const offlineCtx = new OfflineAudioContext(
+            buffer.numberOfChannels,
+            targetLength,
+            targetRate
+        );
+        const source = offlineCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(offlineCtx.destination);
+        source.start(0);
+        return await offlineCtx.startRendering();
+    }
+
+    function encodeToMp3(buffer, bitrate, onProgress) {
+        return new Promise((resolve, reject) => {
+            try {
+                const numChannels = buffer.numberOfChannels;
+                const sampleRate = buffer.sampleRate;
+                const left = buffer.getChannelData(0);
+                const right = numChannels >= 2 ? buffer.getChannelData(1) : left;
+                const channels = numChannels >= 2 ? 2 : 1;
+
+                // 关键修复：将 Float32 转为 Int16，确保 lamejs 正确编码
+                function floatTo16BitPCM(input) {
+                    const output = new Int16Array(input.length);
+                    for (let i = 0; i < input.length; i++) {
+                        const s = Math.max(-1, Math.min(1, input[i]));
+                        output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+                    return output;
+                }
+
+                const leftInt16 = floatTo16BitPCM(left);
+                const rightInt16 = channels === 2 ? floatTo16BitPCM(right) : leftInt16;
+
+                const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, bitrate);
+                const blockSize = 1152;
+                const totalSamples = left.length;
+                const mp3DataChunks = [];
+                let offset = 0;
+
+                function encodeChunk() {
+                    try {
+                        if (offset >= totalSamples) {
+                            const lastChunk = mp3encoder.flush();
+                            if (lastChunk.length > 0) mp3DataChunks.push(lastChunk);
+                            const totalLen = mp3DataChunks.reduce((acc, c) => acc + c.length, 0);
+                            const mp3Bytes = new Uint8Array(totalLen);
+                            let pos = 0;
+                            for (const chunk of mp3DataChunks) {
+                                mp3Bytes.set(chunk, pos);
+                                pos += chunk.length;
+                            }
+                            resolve(new Blob([mp3Bytes], { type: 'audio/mpeg' }));
                             return;
                         }
-                    }
-                    let processedBuffer = mp3AudioBuffer;
-                    if (mp3AudioBuffer.sampleRate !== 44100) {
-                        statusText.textContent = '🔄 正在重采样到 44100Hz...';
-                        processedBuffer = await resampleTo44100(mp3AudioBuffer);
-                    }
-                    mp3BlobResult = await encodeToMp3(processedBuffer, bitrate, function(percent) {
-                        progressFill.style.width = percent + '%';
-                        statusText.textContent = `🔄 编码中 ${percent}%`;
-                    });
-                    statusText.textContent = `✅ 转换完成！文件大小：${(mp3BlobResult.size / 1024).toFixed(1)} KB`;
-                    downloadBtn.disabled = false;
-                    convertBtn.disabled = false;
-                } catch (err) {
-                    statusText.textContent = '❌ 转换失败：' + err.message;
-                    console.error(err);
-                    convertBtn.disabled = false;
-                }
-            });
 
-            downloadBtn.addEventListener('click', function() {
-                if (!mp3BlobResult) { alert('请先转换'); return; }
-                const url = URL.createObjectURL(mp3BlobResult);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'converted.mp3';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(url), 5000);
-            });
+                        const chunkSize = Math.min(blockSize, totalSamples - offset);
+                        const leftChunk = leftInt16.subarray(offset, offset + chunkSize);
+                        const rightChunk = rightInt16.subarray(offset, offset + chunkSize);
 
-            async function resampleTo44100(buffer) {
-                const targetRate = 44100;
-                const offlineCtx = new OfflineAudioContext(
-                    buffer.numberOfChannels,
-                    Math.ceil(buffer.duration * targetRate),
-                    targetRate
-                );
-                const source = offlineCtx.createBufferSource();
-                source.buffer = buffer;
-                source.connect(offlineCtx.destination);
-                source.start(0);
-                const rendered = await offlineCtx.startRendering();
-                return rendered;
-            }
-
-            function encodeToMp3(buffer, bitrate, onProgress) {
-                return new Promise((resolve, reject) => {
-                    try {
-                        const numChannels = buffer.numberOfChannels;
-                        const sampleRate = buffer.sampleRate;
-                        let left = buffer.getChannelData(0);
-                        let right = numChannels >= 2 ? buffer.getChannelData(1) : left;
-                        const channels = numChannels >= 2 ? 2 : 1;
-                        const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, bitrate);
-                        const blockSize = 1152;
-                        const samplesPerChannel = left.length;
-                        const mp3DataChunks = [];
-                        let offset = 0;
-
-                        function encodeChunk() {
-                            if (offset >= samplesPerChannel) {
-                                const lastChunk = mp3encoder.flush();
-                                if (lastChunk.length > 0) mp3DataChunks.push(lastChunk);
-                                const totalLen = mp3DataChunks.reduce((a, c) => a + c.length, 0);
-                                const mp3Bytes = new Uint8Array(totalLen);
-                                let writePos = 0;
-                                mp3DataChunks.forEach(chunk => {
-                                    mp3Bytes.set(chunk, writePos);
-                                    writePos += chunk.length;
-                                });
-                                const blob = new Blob([mp3Bytes], { type: 'audio/mpeg' });
-                                resolve(blob);
-                                return;
-                            }
-                            const remaining = samplesPerChannel - offset;
-                            const chunkSize = Math.min(blockSize, remaining);
-                            const leftChunk = left.subarray(offset, offset + chunkSize);
-                            const rightChunk = right.subarray(offset, offset + chunkSize);
-                            let mp3Chunk;
-                            if (channels === 1) {
-                                mp3Chunk = mp3encoder.encodeBuffer(leftChunk);
-                            } else {
-                                mp3Chunk = mp3encoder.encodeBuffer(leftChunk, rightChunk);
-                            }
-                            if (mp3Chunk.length > 0) mp3DataChunks.push(mp3Chunk);
-                            offset += chunkSize;
-                            const percent = Math.min(100, Math.round((offset / samplesPerChannel) * 100));
-                            if (onProgress) onProgress(percent);
-                            setTimeout(encodeChunk, 0);
+                        let mp3Chunk;
+                        if (channels === 1) {
+                            mp3Chunk = mp3encoder.encodeBuffer(leftChunk);
+                        } else {
+                            mp3Chunk = mp3encoder.encodeBuffer(leftChunk, rightChunk);
                         }
-                        encodeChunk();
-                    } catch (e) { reject(e); }
-                });
+
+                        if (mp3Chunk.length > 0) {
+                            mp3DataChunks.push(mp3Chunk);
+                        }
+
+                        offset += chunkSize;
+                        if (onProgress) {
+                            onProgress(Math.min(100, Math.round((offset / totalSamples) * 100)));
+                        }
+                        setTimeout(encodeChunk, 0);
+                    } catch (e) {
+                        reject(e);
+                    }
+                }
+                encodeChunk();
+            } catch (e) {
+                reject(e);
             }
-        }
+        });
+    }
+}
 
         // ================================================================
         // 7. 逐帧提取
